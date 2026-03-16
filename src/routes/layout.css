@@ -1,0 +1,72 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/forms';
+@plugin '@tailwindcss/typography';
+
+@theme {
+	--font-mono: 'Courier New', Courier, monospace;
+
+	--color-bg: #f5f0e8;
+	--color-fg: #0a0a0a;
+	--color-border: #0a0a0a;
+	--color-muted: #5a5a5a;
+	--color-accent: #0a0a0a;
+	--color-accent-fg: #f5f0e8;
+}
+
+@layer base {
+	*,
+	*::before,
+	*::after {
+		box-sizing: border-box;
+	}
+
+	html {
+		font-family: var(--font-mono);
+		background-color: var(--color-bg);
+		color: var(--color-fg);
+	}
+
+	body {
+		min-height: 100vh;
+	}
+
+	/* Scanline texture overlay */
+	body::before {
+		content: '';
+		position: fixed;
+		inset: 0;
+		background-image: repeating-linear-gradient(
+			0deg,
+			transparent,
+			transparent 2px,
+			oklch(0% 0 0 / 0.03) 2px,
+			oklch(0% 0 0 / 0.03) 4px
+		);
+		pointer-events: none;
+		z-index: 9999;
+	}
+
+	/* Remove default button styles */
+	button {
+		font-family: var(--font-mono);
+		cursor: pointer;
+	}
+
+	input,
+	textarea,
+	select {
+		font-family: var(--font-mono);
+	}
+
+	/* Scrollbar */
+	::-webkit-scrollbar {
+		width: 6px;
+		height: 6px;
+	}
+	::-webkit-scrollbar-track {
+		background: var(--color-bg);
+	}
+	::-webkit-scrollbar-thumb {
+		background: var(--color-fg);
+	}
+}
