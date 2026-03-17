@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { MusicNoteIcon, XIcon } from 'phosphor-svelte';
+	import { MusicNoteIcon, XIcon, PlayIcon } from 'phosphor-svelte';
 	import { removeFromQueue, playId } from '$lib/mpd.remote';
 	import type { MpdQueueItem } from '$lib/mpd.types';
 
@@ -17,18 +17,30 @@
 		{active ? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]' : 'hover:bg-[var(--color-fg)]/5'}"
 >
 	<!-- Position / now playing indicator -->
-	<button
-		onclick={() => playId(song.id)}
-		class="flex w-5 shrink-0 items-center justify-center text-[10px] tabular-nums
-			{active ? 'text-[var(--color-accent-fg)]' : 'text-[var(--color-muted)]'}"
-		aria-label="play {song.title ?? song.file}"
-	>
+	<span class="relative flex w-5 shrink-0 items-center justify-center">
+		<!-- Position number: visible by default, hidden on hover (desktop only) -->
 		{#if active && playing}
-			<MusicNoteIcon size={11} weight="fill" />
+			<MusicNoteIcon size={11} weight="fill" class="group-hover:hidden" />
 		{:else}
-			{song.pos + 1}
+			<span
+				class="text-[10px] tabular-nums group-hover:hidden
+				{active ? 'text-[var(--color-accent-fg)]' : 'text-[var(--color-muted)]'}"
+			>
+				{song.pos + 1}
+			</span>
 		{/if}
-	</button>
+		<!-- Play button: visible on hover (desktop), always visible on touch via active state -->
+		<button
+			onclick={() => playId(song.id)}
+			class="absolute hidden items-center justify-center group-hover:flex
+				{active
+				? 'text-[var(--color-accent-fg)]'
+				: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+			aria-label="play {song.title ?? song.file}"
+		>
+			<PlayIcon size={13} weight="fill" />
+		</button>
+	</span>
 
 	<!-- Song info -->
 	<div class="min-w-0 flex-1">
@@ -59,10 +71,20 @@
 		</span>
 	{/if}
 
+	<!-- Play (mobile: always visible, desktop: hidden — covered by hover on position) -->
+	<button
+		onclick={() => playId(song.id)}
+		class="shrink-0 sm:hidden
+			{active ? 'text-[var(--color-accent-fg)]' : 'text-[var(--color-muted)]'}"
+		aria-label="play {song.title ?? song.file}"
+	>
+		<PlayIcon size={13} weight="fill" />
+	</button>
+
 	<!-- Remove -->
 	<button
 		onclick={() => removeFromQueue(song.id)}
-		class="shrink-0 opacity-0 transition-opacity group-hover:opacity-100
+		class="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 sm:block
 			{active
 			? 'text-[var(--color-accent-fg)]'
 			: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
