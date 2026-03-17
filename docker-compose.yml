@@ -1,0 +1,64 @@
+services:
+  svelte-mpd:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        MPD_HOST: mpd
+        MPD_PORT: 6600
+        SNAP_HOST: snapserver
+        SNAP_PORT: 1780
+        ORIGIN: http://192.168.0.169:3000
+        PORT: '3000'
+    environment:
+      NODE_ENV: production
+      MPD_HOST: mpd
+      MPD_PORT: '6600'
+      SNAP_HOST: snapserver
+      SNAP_PORT: '1780'
+      ORIGIN: http://192.168.0.169:3000
+      PORT: '3000'
+    ports:
+      - '3000:3000'
+    privileged: true
+    restart: unless-stopped
+    depends_on:
+      - mpd
+      - snapserver
+    networks:
+      - audio
+
+  mpd:
+    image: ghcr.io/jlessard/mpd:latest
+    volumes:
+      - ./mpd.conf:/etc/mpd.conf
+      - music:/music
+      - mpd-data:/var/lib/mpd
+      - shared-fifo:/shared
+    restart: unless-stopped
+    networks:
+      - audio
+
+  snapserver:
+    build:
+      context: .
+      dockerfile: Dockerfile.snapserver
+    volumes:
+      - ./snapserver.conf:/etc/snapserver.conf
+      - shared-fifo:/shared
+    ports:
+      - '1704:1704'
+      - '1705:1705'
+      - '1780:1780'
+    restart: unless-stopped
+    networks:
+      - audio
+
+volumes:
+  music:
+  mpd-data:
+  shared-fifo:
+
+networks:
+  audio:
+    driver: bridge
