@@ -1,139 +1,283 @@
 # svelte-mpd
 
-SvelteKit frontend for [MPD](https://www.musicpd.org/) (Music Player Daemon). Built with Bun, Svelte 5 (runes), TailwindCSS v4, and a typewriter aesthetic.
+A self-hosted web frontend for [MPD (Music Player Daemon)](https://www.musicpd.org/) with real-time synchronization and multi-room audio via [Snapserver](https://github.com/badaix/snapcast). Designed to run on a Raspberry Pi or any Linux server on a local network.
+
+Built with Bun, SvelteKit 2, Svelte 5 (runes), TailwindCSS v4, and a typewriter/terminal aesthetic.
+
+## Features
+
+- **Playback control** — play, pause, stop, next/prev, seek, volume, random, repeat
+- **Queue management** — view current queue, jump to track, remove tracks, clear queue
+- **Library browser** — hierarchical filesystem navigation via MPD `lsinfo`; add folders or files to queue
+- **Fuzzy search** — instant full-library search powered by a server-side MiniSearch index
+- **Multi-room audio** — per-client volume and mute control via Snapserver
+- **Real-time sync** — SSE keeps all open browser tabs in sync (player, queue, volume, options)
+- **Admin panel** — trigger MPD database rescan, reboot or shut down the host machine
+- **PWA** — installable as a standalone app
+
+---
 
 ## Stack
 
-- **SvelteKit** with `adapter-node`
-- **Bun** as runtime and package manager
-- **Svelte 5** — runes only (`$state`, `$derived`, `$effect`)
-- **TailwindCSS v4** (Vite plugin)
-- **Phosphor Icons** (`phosphor-svelte` v3, `*Icon` naming)
-- **mpd-api** (wraps `mpd2`) for MPD communication
-- **MiniSearch** for fuzzy client-side search over the MPD database
-- **SSE** (Server-Sent Events) for real-time state updates
+| Layer             | Technology                             |
+| ----------------- | -------------------------------------- |
+| Runtime           | Bun 1.3                                |
+| Frontend          | SvelteKit 2 + Svelte 5 (runes)         |
+| Adapter           | `@sveltejs/adapter-node`               |
+| Styling           | TailwindCSS v4                         |
+| Icons             | `phosphor-svelte` v3                   |
+| MPD client        | `mpd-api` (TCP)                        |
+| Snapserver client | WebSocket + HTTP JSON-RPC              |
+| Search            | MiniSearch v7 (in-memory, server-side) |
+| Real-time         | Server-Sent Events (SSE)               |
+| Containerization  | Docker + Docker Compose                |
 
-## Architecture
+---
 
-### Server (`src/lib/server/mpd.ts`)
+## Quick start (Docker Compose)
 
-Two separate MPD TCP connections:
+Recommended for production. Runs MPD + Snapserver + the web app as a single stack.
 
-- **Command connection** (`getClient`) — shared, used by remote functions for playback control, queue management, etc.
-- **Idle connection** (`startIdle`) — dedicated, listens to MPD subsystem events (`player`, `mixer`, `playlist`, `options`, `database`) and broadcasts to all connected SSE clients.
+### Prerequisites
 
-On first connection, a MiniSearch index is built from `listallinfo` in the background. It rebuilds automatically on `system-database` events.
+- Docker and Docker Compose installed
+- Your music files accessible on the host
 
-### Real-time (SSE)
+### 1. Clone and configure
 
-`/sse` endpoint (`src/routes/sse/+server.ts`):
+```sh
+git clone <repo-url>
+cd music-bun-kilo
+```
 
-- On connect: sends a `snapshot` event with current status, current song, and full queue
-- Ongoing: forwards `player`, `mixer`, `playlist`, `options` broadcasts from the idle connection
-- Keepalive: `ping` every 30s
-
-The client (`+layout.svelte`) connects to `/sse` and writes directly to `mpdStore` (Svelte 5 class with `$state` properties).
-
-### Remote Functions
-
-`src/lib/mpd.remote.ts` — SvelteKit experimental remote functions (`$app/server`):
-
-- **Queries**: `getStatus`, `getCurrentSong`, `getQueue`, `lsinfo`, `searchSongs`, `getSearchStatus`
-- **Commands**: `play`, `pause`, `resume`, `togglePlayback`, `stop`, `next`, `prev`, `playId`, `setVolume`, `seek`, `setRandom`, `setRepeat`, `addToQueue`, `removeFromQueue`, `clearQueue`
-
-### State
-
-`src/lib/mpd.svelte.ts` — singleton `MpdStore` class with granular `$state` properties:
-`connected`, `playing`, `paused`, `stopped`, `currentSong`, `volume`, `elapsed`, `duration`, `random`, `repeat`, `single`, `consume`, `queue`.
-
-## Configuration
+Create a `.env` file at the project root:
 
 ```env
-# .env
-MPD_HOST=localhost
+# MPD connection (use service name inside Docker Compose)
+MPD_HOST=mpd
 MPD_PORT=6600
-ORIGIN=http://192.168.0.169:3000   # required for remote functions from other devices
+
+# Snapserver connection (use service name inside Docker Compose)
+SNAP_HOST=snapserver
+SNAP_PORT=1780
+
+# REQUIRED: LAN IP (or hostname) of the server + web app port
+# Must be reachable by other devices on your network
+ORIGIN=http://192.168.0.x:3000
+
+# Web app port
 PORT=3000
 ```
 
-## Routes
+> **`ORIGIN` is required.** SvelteKit uses it to validate `Host` headers for remote function calls. Set it to the actual LAN address of your server.
 
-| Route                | Description                      |
-| -------------------- | -------------------------------- |
-| `/`                  | Current queue                    |
-| `/search`            | Fuzzy search via MiniSearch      |
-| `/library`           | Browse MPD filesystem (`lsinfo`) |
-| `/library/[...path]` | Nested directory navigation      |
-| `/sse`               | SSE endpoint (internal)          |
+### 2. Mount your music
 
-## Current functionality
+By default, `docker-compose.yml` mounts `./music` into the MPD container. Create that directory and place (or symlink) your music collection there:
 
-### Player bar (all pages)
+```sh
+mkdir -p music
+# copy or symlink your music into ./music/
+```
 
-**Working:**
+To use a different path, edit the `mpd` service volumes in `docker-compose.yml`:
 
-- prev / play / pause / stop / next
-- Seek bar (click or ←/→ keyboard ±5s)
+```yaml
+volumes:
+  - /your/actual/music/path:/var/lib/mpd/music:ro
+```
+
+### 3. Start the stack
+
+```sh
+docker compose up --build   # first run (builds images)
+docker compose up           # subsequent runs
+docker compose up -d        # detached / background
+```
+
+### 4. Access the app
+
+Open `http://<your-server-ip>:3000` from any device on your local network.
+
+After adding new music files, go to `/admin` and click **Update database** to trigger an MPD library rescan.
+
+---
+
+## Ports
+
+| Service    | Port | Protocol | Description                               |
+| ---------- | ---- | -------- | ----------------------------------------- |
+| svelte-mpd | 3000 | HTTP     | Web application                           |
+| mpd        | 6600 | TCP      | MPD protocol (for external MPD clients)   |
+| snapserver | 1704 | TCP      | Snapcast audio stream                     |
+| snapserver | 1705 | TCP      | Snapcast control                          |
+| snapserver | 1780 | HTTP     | Snapserver JSON-RPC API + built-in web UI |
+
+---
+
+## Audio pipeline
+
+```
+Music files
+    └── MPD reads and decodes audio
+         └── writes PCM → /shared/snapfifo  (named FIFO pipe)
+              └── Snapserver reads the FIFO
+                   └── streams to Snapcast clients (speakers, phones, other Pis, etc.)
+```
+
+The FIFO (`snapfifo`) is created by `entrypoint.sh` and lives in a named Docker volume (`shared-fifo`) mounted into both the `mpd` and `snapserver` containers.
+
+### Snapcast clients
+
+Install a [Snapcast client](https://github.com/badaix/snapcast#client) on any device (Linux, Android, macOS, Windows, Raspberry Pi) and connect it to port `1704` of your server. The `/snap` page in the web app shows all connected clients with individual volume and mute controls.
+
+---
+
+## Configuration files
+
+| File                 | Description                                                             |
+| -------------------- | ----------------------------------------------------------------------- |
+| `.env`               | Runtime environment variables (see above)                               |
+| `mpd.conf`           | MPD config — music dir, FIFO output to `snapfifo`, disables local audio |
+| `snapserver.conf`    | Snapserver config — reads from `snapfifo`, sets stream name             |
+| `docker-compose.yml` | Service definitions, volumes, port bindings                             |
+| `entrypoint.sh`      | Creates the FIFO and starts MPD inside the container                    |
+
+### Persisting MPD state
+
+`docker-compose.yml` mounts `./mpd-db` and `./playlists` to persist the MPD database and playlists across container restarts. These directories are created automatically on first run.
+
+---
+
+## Deployment on Raspberry Pi
+
+1. Install Docker:
+   ```sh
+   curl -fsSL https://get.docker.com | sh
+   sudo usermod -aG docker $USER
+   ```
+2. Clone the repo and follow the **Quick start** steps above.
+3. Set `ORIGIN` in `.env` to the Pi's LAN IP.
+4. Start in detached mode: `docker compose up -d`
+
+The `restart: unless-stopped` policy (set in `docker-compose.yml`) ensures the stack comes back up after a reboot.
+
+The `/admin` page lets you reboot or shut down the Pi directly from the web UI. This requires the `svelte-mpd` container to run with `privileged: true` (already configured).
+
+---
+
+## Pages
+
+| Route                | Description                                  |
+| -------------------- | -------------------------------------------- |
+| `/`                  | Current playback queue                       |
+| `/search`            | Full-library fuzzy search                    |
+| `/library`           | Music library filesystem browser             |
+| `/library/[...path]` | Nested directory navigation                  |
+| `/snap`              | Snapserver multi-room client volume control  |
+| `/admin`             | MPD database update + system reboot/shutdown |
+
+### Player bar (persistent, all pages)
+
+- Prev / play-pause / stop / next
+- Seek bar — click or ←/→ keys (±5 s), interpolates locally between SSE updates
 - Volume slider
-- Random and repeat toggles with visual state
+- Random and repeat toggles
 - Displays current song, artist, album, elapsed and total time
-
-**Missing:**
-
-- Elapsed time does not advance in real time — only updates on MPD `player` events (state changes). A client-side `setInterval` or a more frequent SSE `elapsed` event is needed for smooth progress.
 
 ### `/` — Queue
 
-**Working:**
-
-- Lists current queue; active song highlighted (inverted colours)
-- Click position number → `playId` (jump to that song)
-- Hover `✕` button → `removeFromQueue`
-- List updates in real time via SSE on queue changes
-
-**Missing:**
-
-- No button to clear the entire queue
-- No drag & drop reordering
+- Lists the current MPD queue; active song highlighted
+- Click track number → jump to that track (`playId`)
+- Hover `✕` → remove from queue
+- "Clear queue" button
+- Updates in real time via SSE
 
 ### `/search` — Search
 
-**Working:**
-
-- Reactive text input, searches MiniSearch index (fuzzy + prefix)
+- Fuzzy + prefix search against a full in-memory MiniSearch index
 - Results show title, artist, album, year, duration
-- Hover `+` button → `addToQueue` with `✓` feedback for 2s
-
-**Missing:**
-
-- No direct play option (add to queue only)
-- No loading indicator while the MiniSearch index is being built on startup (searches return empty until ready)
+- `+` button → add to queue (with ✓ confirmation)
+- Index is built on server startup and rebuilt automatically after MPD database updates
 
 ### `/library` — Library browser
 
-**Working:**
+- Navigates MPD's virtual filesystem via `lsinfo`
+- Clickable breadcrumb navigation
+- Directories: click to enter, `+` to add entire folder to queue
+- Files: `+` to add to queue, play-now to clear queue and play immediately
+- `+ all` adds the entire current directory to the queue
 
-- Directory navigation via MPD `lsinfo`
-- Clickable breadcrumb to go up levels
-- Directories: click to navigate in, hover `+` adds entire folder to queue
-- Files: hover `+` adds song to queue
-- `+ all` button in breadcrumb adds current directory to queue
+### `/snap` — Snapserver
 
-**Missing:**
+- Lists all connected Snapcast clients by name
+- Per-client volume slider and mute toggle
+- Updates in real time via SSE
 
-- No direct play option for files (add to queue only)
-- No visual indication of which songs are already in the queue or currently playing
+### `/admin`
+
+- **Update database** — triggers MPD `db.update()` to rescan the music directory
+- **Reboot** / **Shutdown** — two-step confirmation before executing system commands
+
+---
+
+## Real-time events (SSE `/sse`)
+
+| Event          | Payload                                                           |
+| -------------- | ----------------------------------------------------------------- |
+| `snapshot`     | Full state on connect (status, current song, queue, snap clients) |
+| `player`       | Playback state, current song, elapsed time                        |
+| `mixer`        | Volume level                                                      |
+| `playlist`     | Queue changes                                                     |
+| `options`      | Random, repeat, single, consume                                   |
+| `snap_clients` | Snapserver client list                                            |
+| `ping`         | Keepalive every 30 s                                              |
+
+---
 
 ## Development
 
+### Prerequisites
+
+- [Bun](https://bun.sh) 1.3+
+- A running MPD instance (local or remote)
+- (Optional) A running Snapserver instance
+
+### Setup
+
 ```sh
 bun install
-bun dev
 ```
 
-## Build
+Create a `.env` file:
 
-```sh
-bun run build
-bun start
+```env
+MPD_HOST=localhost
+MPD_PORT=6600
+SNAP_HOST=localhost
+SNAP_PORT=1780
+ORIGIN=http://localhost:3000
+PORT=3000
 ```
+
+### Scripts
+
+| Command             | Description                           |
+| ------------------- | ------------------------------------- |
+| `bun dev`           | Start Vite dev server with hot reload |
+| `bun run build`     | Production build                      |
+| `bun start`         | Run the production build              |
+| `bun run check`     | Svelte + TypeScript type check        |
+| `bun run lint`      | Prettier + ESLint check               |
+| `bun run format`    | Auto-format with Prettier             |
+| `bun run test`      | Run tests once                        |
+| `bun run test:unit` | Run tests in watch mode               |
+
+### Architecture notes
+
+- **Two MPD TCP connections** — a dedicated idle connection listens for MPD subsystem events without blocking; a separate command connection handles all mutations. Both auto-reconnect with 5-second backoff (`src/lib/server/mpd.ts`).
+- **Remote functions** — SvelteKit's experimental `$app/server` `command`/`query` API is used instead of `+server.ts` routes, co-locating server logic with UI (`src/lib/mpd.remote.ts`).
+- **Svelte 5 runes** — the global store (`MpdStore`) is a class with `$state` properties. No legacy store API (`src/lib/mpd.svelte.ts`).
+- **In-memory MiniSearch index** — built at startup from `mpd.db.listallinfo()`, rebuilt automatically on `system-database` MPD events.
+- **Optimistic UI** — seek bar interpolates locally between SSE updates; Snapserver sliders update immediately without waiting for RPC confirmation.
+- **SSE keepalive** — `X-Accel-Buffering: no` header prevents Nginx from buffering the event stream.
