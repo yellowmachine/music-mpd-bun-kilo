@@ -1,3 +1,6 @@
+import type { SnapClient } from '$lib/mpd.types';
+export type { SnapClient };
+
 export interface CurrentSong {
 	file: string;
 	title?: string;
@@ -29,6 +32,7 @@ class MpdStore {
 	single = $state(false);
 	consume = $state(false);
 	queue = $state<QueueItem[]>([]);
+	snapClients = $state<SnapClient[]>([]);
 
 	reset() {
 		this.connected = false;
@@ -44,6 +48,7 @@ class MpdStore {
 		this.single = false;
 		this.consume = false;
 		this.queue = [];
+		this.snapClients = [];
 	}
 }
 

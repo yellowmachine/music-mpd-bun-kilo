@@ -5,8 +5,14 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import { mpdStore } from '$lib/mpd.svelte';
 	import Player from '$lib/components/Player.svelte';
-	import type { MpdStatus, MpdSong, MpdQueueItem } from '$lib/mpd.types';
-	import { QueueIcon, MagnifyingGlassIcon, MusicNotesIcon, GearIcon } from 'phosphor-svelte';
+	import type { MpdStatus, MpdSong, MpdQueueItem, SnapClient } from '$lib/mpd.types';
+	import {
+		QueueIcon,
+		MagnifyingGlassIcon,
+		MusicNotesIcon,
+		GearIcon,
+		SpeakerHighIcon
+	} from 'phosphor-svelte';
 
 	let { children } = $props();
 
@@ -60,6 +66,13 @@
 				mpdStore.repeat = data.repeat ?? mpdStore.repeat;
 				mpdStore.single = data.single ?? mpdStore.single;
 				mpdStore.consume = data.consume ?? mpdStore.consume;
+			} catch {}
+		});
+
+		eventSource.addEventListener('snap_clients', (e: MessageEvent) => {
+			try {
+				const { clients } = JSON.parse(e.data) as { clients: SnapClient[] };
+				mpdStore.snapClients = clients;
 			} catch {}
 		});
 
@@ -145,6 +158,17 @@
 			>
 				<MagnifyingGlassIcon size={14} weight="bold" />
 				search
+			</a>
+			<a
+				href="/snap"
+				aria-label="snapcast"
+				class="flex items-center gap-1.5 border-l border-[var(--color-border)] px-4 py-2.5 text-[10px] tracking-widest uppercase transition-colors
+					{$page.url.pathname === '/snap'
+					? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+					: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+			>
+				<SpeakerHighIcon size={14} weight="bold" />
+				snap
 			</a>
 			<a
 				href="/admin"

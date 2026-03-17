@@ -1,5 +1,6 @@
 import { command, query } from '$app/server';
 import { getClient, search as searchIndex, getSearchState } from '$lib/server/mpd';
+import { setClientVolume, setClientMute, getClients } from '$lib/server/snap';
 import type { Song } from '$lib/server/mpd';
 import type { LibraryListing } from '$lib/mpd.types';
 
@@ -123,6 +124,13 @@ export const addToQueue = command('unchecked', async (uri: string) => {
 	await mpd.api.queue.add(uri);
 });
 
+export const playNow = command('unchecked', async (uri: string) => {
+	const mpd = await getClient();
+	await mpd.api.queue.clear();
+	await mpd.api.queue.add(uri);
+	await mpd.api.playback.play();
+});
+
 export const removeFromQueue = command('unchecked', async (id: number) => {
 	const mpd = await getClient();
 	await mpd.api.queue.deleteid(String(id));
@@ -177,6 +185,28 @@ export const systemShutdown = command(async () => {
 		spawn('shutdown', ['now'], { detached: true, stdio: 'ignore' }).unref();
 	}, 500);
 });
+
+// --- Snapserver ---
+
+export const getSnapClients = query(async () => {
+	return getClients();
+});
+
+export const snapSetVolume = command(
+	'unchecked',
+	async ({ id, percent }: { id: string; percent: number }) => {
+		const clients = getClients();
+		const client = clients.find((c) => c.id === id);
+		await setClientVolume(id, percent, client?.volume.muted ?? false);
+	}
+);
+
+export const snapSetMute = command(
+	'unchecked',
+	async ({ id, muted }: { id: string; muted: boolean }) => {
+		await setClientMute(id, muted);
+	}
+);
 
 // --- Search ---
 

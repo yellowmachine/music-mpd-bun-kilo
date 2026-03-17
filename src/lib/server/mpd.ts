@@ -35,7 +35,7 @@ type Subscriber = (e: SseEvent) => void;
 
 const subscribers = new Set<Subscriber>();
 
-function broadcast(event: string, data: object) {
+export function broadcast(event: string, data: object) {
 	for (const sub of subscribers) sub({ event, data });
 }
 

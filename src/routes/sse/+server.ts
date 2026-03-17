@@ -1,5 +1,6 @@
 import type { RequestHandler } from './$types';
 import { subscribe, getSnapshot } from '$lib/server/mpd';
+import { getClients } from '$lib/server/snap';
 
 export const GET: RequestHandler = async () => {
 	const encoder = new TextEncoder();
@@ -27,6 +28,9 @@ export const GET: RequestHandler = async () => {
 			} catch {
 				send('snapshot', { status: null, song: null, queue: [] });
 			}
+
+			// Send current snap clients snapshot
+			send('snap_clients', { clients: getClients() });
 
 			interval = setInterval(() => send('ping', { timestamp: Date.now() }), 30000);
 		},

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { PlusIcon } from 'phosphor-svelte';
-	import { addToQueue } from '$lib/mpd.remote';
+	import { PlayIcon, PlusIcon, FolderOpenIcon } from 'phosphor-svelte';
+	import { addToQueue, playNow } from '$lib/mpd.remote';
 	import type { Song } from '$lib/server/mpd';
 
 	interface Props {
@@ -9,8 +9,17 @@
 
 	let { song }: Props = $props();
 
+	// Parent directory path for library navigation
+	// e.g. "Blur/The great escape/track.flac" → "/library/Blur/The great escape"
+	const libraryHref = $derived.by(() => {
+		const parts = song.file.split('/');
+		parts.pop();
+		return parts.length ? `/library/${parts.join('/')}` : '/library';
+	});
+
 	let adding = $state(false);
 	let added = $state(false);
+	let playing = $state(false);
 
 	async function handleAdd() {
 		if (adding) return;
@@ -21,6 +30,16 @@
 			setTimeout(() => (added = false), 2000);
 		} finally {
 			adding = false;
+		}
+	}
+
+	async function handlePlay() {
+		if (playing) return;
+		playing = true;
+		try {
+			await playNow(song.file);
+		} finally {
+			playing = false;
 		}
 	}
 </script>
@@ -52,21 +71,51 @@
 		</span>
 	{/if}
 
-	<!-- Add to queue -->
-	<button
-		onclick={handleAdd}
-		disabled={adding}
-		class="shrink-0 border border-[var(--color-border)] px-2 py-0.5 text-[10px] tracking-wider uppercase
-			opacity-0 transition-opacity group-hover:opacity-100
-			{added
-			? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-			: 'hover:bg-[var(--color-fg)] hover:text-[var(--color-accent-fg)]'}"
-		aria-label="add to queue"
+	<!-- Actions (visible on hover) -->
+	<div
+		class="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100"
 	>
-		{#if added}
-			✓
-		{:else}
-			<PlusIcon size={10} weight="bold" />
-		{/if}
-	</button>
+		<!-- Play now -->
+		<button
+			onclick={handlePlay}
+			disabled={playing}
+			class="border border-[var(--color-border)] p-1 transition-colors
+				hover:bg-[var(--color-fg)] hover:text-[var(--color-accent-fg)]
+				disabled:opacity-40"
+			aria-label="play now"
+			title="Play now (clears queue)"
+		>
+			<PlayIcon size={11} weight="fill" />
+		</button>
+
+		<!-- Add to queue -->
+		<button
+			onclick={handleAdd}
+			disabled={adding}
+			class="border border-[var(--color-border)] p-1 transition-colors
+				{added
+				? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+				: 'hover:bg-[var(--color-fg)] hover:text-[var(--color-accent-fg)]'}
+				disabled:opacity-40"
+			aria-label="add to queue"
+			title="Add to queue"
+		>
+			{#if added}
+				<span class="px-0.5 text-[10px]">✓</span>
+			{:else}
+				<PlusIcon size={11} weight="bold" />
+			{/if}
+		</button>
+
+		<!-- Navigate to library folder -->
+		<a
+			href={libraryHref}
+			class="border border-[var(--color-border)] p-1 transition-colors
+				hover:bg-[var(--color-fg)] hover:text-[var(--color-accent-fg)]"
+			aria-label="open in library"
+			title="Open folder in library"
+		>
+			<FolderOpenIcon size={11} weight="bold" />
+		</a>
+	</div>
 </li>
