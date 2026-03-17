@@ -18,6 +18,6 @@ services:
       SNAP_PORT: '1780'
       ORIGIN: http://192.168.0.169:3000
       PORT: '3000'
-    network_mode: host
+    network_mode: host # shares host network directly; ports mapping is not needed nor supported
     privileged: true
     restart: unless-stopped
