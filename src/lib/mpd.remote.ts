@@ -155,6 +155,29 @@ export const lsinfo = query('unchecked', async (path: string): Promise<LibraryLi
 	};
 });
 
+// --- Admin ---
+
+export const mpdUpdate = command(async () => {
+	const mpd = await getClient();
+	await mpd.api.db.update();
+	// buildIndex is triggered automatically via system-database SSE event
+});
+
+export const systemReboot = command(async () => {
+	// Small delay so the response reaches the client before the machine goes down
+	setTimeout(() => {
+		const { spawn } = require('child_process') as typeof import('child_process');
+		spawn('reboot', [], { detached: true, stdio: 'ignore' }).unref();
+	}, 500);
+});
+
+export const systemShutdown = command(async () => {
+	setTimeout(() => {
+		const { spawn } = require('child_process') as typeof import('child_process');
+		spawn('shutdown', ['now'], { detached: true, stdio: 'ignore' }).unref();
+	}, 500);
+});
+
 // --- Search ---
 
 export const searchSongs = query('unchecked', async (q: string) => {

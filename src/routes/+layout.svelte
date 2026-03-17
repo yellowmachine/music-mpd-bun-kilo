@@ -6,7 +6,7 @@
 	import { mpdStore } from '$lib/mpd.svelte';
 	import Player from '$lib/components/Player.svelte';
 	import type { MpdStatus, MpdSong, MpdQueueItem } from '$lib/mpd.types';
-	import { QueueIcon, MagnifyingGlassIcon, MusicNotesIcon } from 'phosphor-svelte';
+	import { QueueIcon, MagnifyingGlassIcon, MusicNotesIcon, GearIcon } from 'phosphor-svelte';
 
 	let { children } = $props();
 
@@ -145,6 +145,17 @@
 			>
 				<MagnifyingGlassIcon size={14} weight="bold" />
 				search
+			</a>
+			<a
+				href="/admin"
+				aria-label="admin"
+				class="flex items-center gap-1.5 border-l border-[var(--color-border)] px-4 py-2.5 text-[10px] tracking-widest uppercase transition-colors
+					{$page.url.pathname === '/admin'
+					? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+					: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+			>
+				<GearIcon size={14} weight="bold" />
+				admin
 			</a>
 		</nav>
 
