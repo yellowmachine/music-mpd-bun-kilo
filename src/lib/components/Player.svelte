@@ -31,15 +31,36 @@
 		return `${m}:${s.toString().padStart(2, '0')}`;
 	}
 
-	const progress = $derived(
-		mpdStore.duration > 0 ? (mpdStore.elapsed / mpdStore.duration) * 100 : 0
-	);
+	// Local elapsed ticks every second when playing.
+	// Resets to mpdStore.elapsed whenever the store updates (SSE event).
+	let localElapsed = $state(mpdStore.elapsed);
+
+	$effect(() => {
+		// Sync from store whenever it changes (SSE update)
+		localElapsed = mpdStore.elapsed;
+	});
+
+	$effect(() => {
+		if (!mpdStore.playing) return;
+
+		const interval = setInterval(() => {
+			// Cap at duration so the bar doesn't overflow between SSE events
+			localElapsed =
+				mpdStore.duration > 0 ? Math.min(localElapsed + 1, mpdStore.duration) : localElapsed + 1;
+		}, 1000);
+
+		return () => clearInterval(interval);
+	});
+
+	const progress = $derived(mpdStore.duration > 0 ? (localElapsed / mpdStore.duration) * 100 : 0);
 
 	async function handleSeek(e: MouseEvent) {
 		const bar = e.currentTarget as HTMLElement;
 		const rect = bar.getBoundingClientRect();
 		const ratio = (e.clientX - rect.left) / rect.width;
-		await seek(Math.floor(ratio * mpdStore.duration));
+		const target = Math.floor(ratio * mpdStore.duration);
+		localElapsed = target; // optimistic update
+		await seek(target);
 	}
 
 	async function handleVolume(e: Event) {
@@ -73,14 +94,14 @@
 		class="group relative h-1.5 cursor-pointer bg-[var(--color-border)]/20"
 		role="slider"
 		aria-label="seek"
-		aria-valuenow={mpdStore.elapsed}
+		aria-valuenow={localElapsed}
 		aria-valuemin={0}
 		aria-valuemax={mpdStore.duration}
 		tabindex="0"
 		onclick={handleSeek}
 		onkeydown={(e) => {
-			if (e.key === 'ArrowRight') seek(mpdStore.elapsed + 5);
-			if (e.key === 'ArrowLeft') seek(Math.max(0, mpdStore.elapsed - 5));
+			if (e.key === 'ArrowRight') seek(localElapsed + 5);
+			if (e.key === 'ArrowLeft') seek(Math.max(0, localElapsed - 5));
 		}}
 	>
 		<div
@@ -91,7 +112,7 @@
 
 	<!-- Time -->
 	<div class="flex justify-between px-4 pt-1 text-[10px] text-[var(--color-muted)]">
-		<span>{formatTime(mpdStore.elapsed)}</span>
+		<span>{formatTime(localElapsed)}</span>
 		<span>{formatTime(mpdStore.duration)}</span>
 	</div>
 
