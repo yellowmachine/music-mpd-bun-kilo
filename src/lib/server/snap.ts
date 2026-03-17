@@ -146,8 +146,7 @@ function scheduleReconnect() {
 	}, 5000);
 }
 
-// Start eagerly at module load (skip during build)
-if (!process.env.BUILDING) connectWebSocket();
+export { connectWebSocket };
 
 // --- Public API ---
 

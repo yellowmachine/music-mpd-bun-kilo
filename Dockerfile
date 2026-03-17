@@ -24,12 +24,9 @@ ENV MPD_HOST=$MPD_HOST \
     SNAP_HOST=$SNAP_HOST \
     SNAP_PORT=$SNAP_PORT \
     ORIGIN=$ORIGIN \
-    PORT=$PORT \
-    BUILDING=true
+    PORT=$PORT
 
 RUN bun run build
-
-ENV BUILDING=
 
 # Prune to production-only dependencies
 RUN bun install --frozen-lockfile --production

@@ -143,8 +143,7 @@ async function startIdle() {
 	});
 }
 
-// Start idle connection eagerly at module load (skip during build)
-if (!process.env.BUILDING) startIdle();
+export { startIdle };
 
 // --- Initial state snapshot (for new SSE clients) ---
 
@@ -232,8 +231,7 @@ async function buildIndex(): Promise<void> {
 	}
 }
 
-// Build index once the idle connection is up (skip during build)
-if (!process.env.BUILDING) startIdle().then(() => buildIndex());
+export { buildIndex };
 
 export function getSearchState(): SearchState {
 	return searchState;
