@@ -1,0 +1,18 @@
+FROM alpine:edge
+
+LABEL maintainer="Tu Nombre <tu@email.com>"
+
+# Instala snapserver y dependencias útiles
+RUN apk add --no-cache snapcast-server
+
+# Crea el directorio para la FIFO (la FIFO se creará en el volumen compartido)
+RUN mkdir -p /shared
+
+# Copia la configuración personalizada de snapserver
+COPY snapserver.conf /etc/snapserver.conf
+
+# Expone los puertos estándar de snapserver
+EXPOSE 1704 1705 1780
+
+# Comando por defecto: lanza snapserver con la configuración
+CMD ["snapserver", "-c", "/etc/snapserver.conf"]

@@ -1,0 +1,14 @@
+FROM alpine:latest
+
+RUN apk add --no-cache mpd
+RUN apk add --no-cache mpc
+
+# Crea el directorio para la FIFO compartida
+RUN mkdir -p /shared
+
+# Copia tu configuración personalizada de MPD
+COPY mpd.conf /etc/mpd.conf
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
