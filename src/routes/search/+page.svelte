@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { MagnifyingGlassIcon, XIcon } from 'phosphor-svelte';
-	import { searchSongs } from '$lib/mpd.remote';
+	import { searchSongs, getSearchStatus } from '$lib/mpd.remote';
 	import SearchSong from '$lib/components/SearchSong.svelte';
 
 	let query = $state('');
 	const results = $derived(query.trim() ? searchSongs(query) : null);
+	const indexStatus = getSearchStatus();
 </script>
 
 <!-- Search input -->
@@ -26,11 +27,30 @@
 			</button>
 		{/if}
 	</div>
+
+	<!-- Index status bar -->
+	{#await indexStatus then status}
+		{#if status.indexing}
+			<p class="mt-1 text-[10px] text-[var(--color-muted)]">● indexing library...</p>
+		{:else if !status.ready}
+			<p class="mt-1 text-[10px] text-[var(--color-muted)]">○ search index not ready</p>
+		{/if}
+	{/await}
 </div>
 
 <!-- Results -->
 {#if results === null}
-	<p class="px-4 py-8 text-center text-xs text-[var(--color-muted)]">— type to search —</p>
+	{#await indexStatus then status}
+		<p class="px-4 py-8 text-center text-xs text-[var(--color-muted)]">
+			{#if status.ready}
+				— type to search · {status.total.toLocaleString()} songs —
+			{:else if status.indexing}
+				— building index, search available shortly —
+			{:else}
+				— type to search —
+			{/if}
+		</p>
+	{/await}
 {:else}
 	{#await results}
 		<p class="px-4 py-3 text-xs text-[var(--color-muted)]">searching...</p>
