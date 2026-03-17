@@ -146,8 +146,8 @@ function scheduleReconnect() {
 	}, 5000);
 }
 
-// Start eagerly at module load
-connectWebSocket();
+// Start eagerly at module load (skip during build)
+if (!process.env.BUILDING) connectWebSocket();
 
 // --- Public API ---
 
