@@ -1,20 +1,17 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { CaretRightIcon, HouseIcon, PlusIcon } from 'phosphor-svelte';
-	import { lsinfo, addToQueue } from '$lib/mpd.remote';
+	import { CaretRightIcon, HouseIcon, PlusIcon, PlayIcon } from 'phosphor-svelte';
+	import { lsinfo, addToQueue, playNow } from '$lib/mpd.remote';
 	import LibraryDir from '$lib/components/LibraryDir.svelte';
-	import SearchSong from '$lib/components/SearchSong.svelte';
+	import LibrarySong from '$lib/components/LibrarySong.svelte';
 
-	// params.path is undefined at /library (no catch-all match), empty string otherwise
 	const mpdPath = $derived($page.params.path ?? '');
-
-	// Breadcrumb segments: ["Blur", "The great escape"]
 	const segments = $derived(mpdPath ? mpdPath.split('/') : []);
-
 	const listing = $derived(lsinfo(mpdPath));
 
 	let addingAll = $state(false);
 	let addedAll = $state(false);
+	let playingAll = $state(false);
 
 	async function handleAddAll() {
 		if (addingAll) return;
@@ -27,11 +24,21 @@
 			addingAll = false;
 		}
 	}
+
+	async function handlePlayAll() {
+		if (playingAll) return;
+		playingAll = true;
+		try {
+			await playNow(mpdPath);
+		} finally {
+			playingAll = false;
+		}
+	}
 </script>
 
 <!-- Breadcrumb + actions -->
 <div
-	class="sticky top-0 z-10 flex items-center gap-0 border-b border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2"
+	class="sticky top-0 z-10 flex items-center gap-2 border-b border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2"
 >
 	<!-- Breadcrumb -->
 	<nav class="flex min-w-0 flex-1 items-center gap-1 text-[10px]" aria-label="breadcrumb">
@@ -58,23 +65,41 @@
 		{/each}
 	</nav>
 
-	<!-- Add all to queue (only when inside a directory) -->
+	<!-- Actions (only when inside a directory) -->
 	{#if mpdPath}
-		<button
-			onclick={handleAddAll}
-			disabled={addingAll}
-			class="ml-4 shrink-0 border border-[var(--color-border)] px-2 py-0.5 text-[10px] tracking-wider uppercase
-				transition-colors
-				{addedAll
-				? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-				: 'hover:bg-[var(--color-fg)] hover:text-[var(--color-accent-fg)]'}"
-		>
-			{#if addedAll}
-				✓ added
-			{:else}
-				<PlusIcon size={10} weight="bold" class="inline" /> all
-			{/if}
-		</button>
+		<div class="flex shrink-0 items-center gap-1">
+			<!-- Play all -->
+			<button
+				onclick={handlePlayAll}
+				disabled={playingAll}
+				class="flex items-center gap-1 border border-[var(--color-border)] px-2 py-0.5
+					text-[10px] tracking-wider uppercase transition-colors
+					hover:bg-[var(--color-fg)] hover:text-[var(--color-accent-fg)]
+					disabled:opacity-40"
+				title="Clear queue and play this directory"
+			>
+				<PlayIcon size={10} weight="fill" />
+				play
+			</button>
+
+			<!-- Add all -->
+			<button
+				onclick={handleAddAll}
+				disabled={addingAll}
+				class="flex items-center gap-1 border border-[var(--color-border)] px-2 py-0.5
+					text-[10px] tracking-wider uppercase transition-colors
+					{addedAll
+					? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+					: 'hover:bg-[var(--color-fg)] hover:text-[var(--color-accent-fg)]'}
+					disabled:opacity-40"
+			>
+				{#if addedAll}
+					✓ added
+				{:else}
+					<PlusIcon size={10} weight="bold" /> all
+				{/if}
+			</button>
+		</div>
 	{/if}
 </div>
 
@@ -89,8 +114,8 @@
 			{#each data.directories as dir (dir.directory)}
 				<LibraryDir {dir} href="/library/{dir.directory}" />
 			{/each}
-			{#each data.files as file (file.file)}
-				<SearchSong song={{ id: file.file, ...file }} />
+			{#each data.files as song (song.file)}
+				<LibrarySong {song} />
 			{/each}
 		</ul>
 	{/if}
