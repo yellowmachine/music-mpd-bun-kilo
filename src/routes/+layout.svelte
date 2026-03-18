@@ -126,129 +126,133 @@
 </svelte:head>
 
 <div class="flex h-screen flex-col overflow-hidden">
-	<!-- Navbar -->
-	<header
-		class="relative flex items-center justify-between border-b-2 border-[var(--color-border)] px-4 py-0"
+	<div
+		class="mx-auto flex w-full max-w-2xl flex-1 flex-col overflow-hidden border-x border-[var(--color-border)]"
 	>
-		<!-- Brand -->
-		<span class="text-xs font-bold tracking-[0.25em] uppercase">svelte-mpd</span>
+		<!-- Navbar -->
+		<header
+			class="relative flex items-center justify-between border-b-2 border-[var(--color-border)] px-4 py-0"
+		>
+			<!-- Brand -->
+			<span class="text-xs font-bold tracking-[0.25em] uppercase">svelte-mpd</span>
 
-		<!-- Nav links -->
-		<nav class="flex h-full items-stretch">
-			<!-- Always visible -->
-			<a
-				href="/"
-				aria-label="queue"
-				class="flex items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors
-					{$page.url.pathname === '/'
-					? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-					: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
-			>
-				<QueueIcon size={14} weight="bold" />
-				<span class="hidden sm:inline">queue</span>
-			</a>
-			<a
-				href="/library"
-				aria-label="library"
-				class="flex items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors
-					{$page.url.pathname.startsWith('/library')
-					? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-					: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
-			>
-				<MusicNotesIcon size={14} weight="bold" />
-				<span class="hidden sm:inline">library</span>
-			</a>
-			<a
-				href="/search"
-				aria-label="search"
-				class="flex items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors
-					{$page.url.pathname === '/search'
-					? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-					: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
-			>
-				<MagnifyingGlassIcon size={14} weight="bold" />
-				<span class="hidden sm:inline">search</span>
-			</a>
-
-			<!-- Desktop only: snap + admin inline -->
-			<a
-				href="/snap"
-				aria-label="snapcast"
-				class="hidden items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors sm:flex
-					{$page.url.pathname === '/snap'
-					? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-					: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
-			>
-				<SpeakerHighIcon size={14} weight="bold" />
-				snap
-			</a>
-			<a
-				href="/admin"
-				aria-label="admin"
-				class="hidden items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors sm:flex
-					{$page.url.pathname === '/admin'
-					? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-					: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
-			>
-				<GearIcon size={14} weight="bold" />
-				admin
-			</a>
-
-			<!-- Mobile only: overflow menu button -->
-			<button
-				onclick={() => (overflowOpen = !overflowOpen)}
-				class="flex items-center border-l border-[var(--color-border)] px-3 py-2.5 transition-colors sm:hidden
-					{overflowOpen
-					? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-					: $page.url.pathname === '/snap' || $page.url.pathname === '/admin'
-						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-						: 'text-[var(--color-muted)]'}"
-				aria-label="more"
-			>
-				<DotsThreeIcon size={16} weight="bold" />
-			</button>
-		</nav>
-
-		<!-- Connection status -->
-		<span class="text-[10px] text-[var(--color-muted)]">
-			{mpdStore.connected ? '●' : '○'}
-		</span>
-
-		<!-- Mobile overflow dropdown -->
-		{#if overflowOpen}
-			<div
-				class="absolute top-full right-0 z-50 border border-[var(--color-border)] bg-[var(--color-bg)] sm:hidden"
-				style="min-width: 140px"
-			>
+			<!-- Nav links -->
+			<nav class="flex h-full items-stretch">
+				<!-- Always visible -->
 				<a
-					href="/snap"
-					class="flex items-center gap-2 border-b border-[var(--color-border)]/30 px-4 py-3 text-[10px] tracking-widest uppercase transition-colors
-						{$page.url.pathname === '/snap'
+					href="/"
+					aria-label="queue"
+					class="flex items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors
+					{$page.url.pathname === '/'
 						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
 						: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
 				>
-					<SpeakerHighIcon size={13} weight="bold" />
+					<QueueIcon size={14} weight="bold" />
+					<span class="hidden sm:inline">queue</span>
+				</a>
+				<a
+					href="/library"
+					aria-label="library"
+					class="flex items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors
+					{$page.url.pathname.startsWith('/library')
+						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+						: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+				>
+					<MusicNotesIcon size={14} weight="bold" />
+					<span class="hidden sm:inline">library</span>
+				</a>
+				<a
+					href="/search"
+					aria-label="search"
+					class="flex items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors
+					{$page.url.pathname === '/search'
+						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+						: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+				>
+					<MagnifyingGlassIcon size={14} weight="bold" />
+					<span class="hidden sm:inline">search</span>
+				</a>
+
+				<!-- Desktop only: snap + admin inline -->
+				<a
+					href="/snap"
+					aria-label="snapcast"
+					class="hidden items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors sm:flex
+					{$page.url.pathname === '/snap'
+						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+						: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+				>
+					<SpeakerHighIcon size={14} weight="bold" />
 					snap
 				</a>
 				<a
 					href="/admin"
-					class="flex items-center gap-2 px-4 py-3 text-[10px] tracking-widest uppercase transition-colors
-						{$page.url.pathname === '/admin'
+					aria-label="admin"
+					class="hidden items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors sm:flex
+					{$page.url.pathname === '/admin'
 						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
 						: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
 				>
-					<GearIcon size={13} weight="bold" />
+					<GearIcon size={14} weight="bold" />
 					admin
 				</a>
-			</div>
-		{/if}
-	</header>
 
-	<!-- Main content -->
-	<main class="min-h-0 flex-1 overflow-auto">
-		{@render children()}
-	</main>
+				<!-- Mobile only: overflow menu button -->
+				<button
+					onclick={() => (overflowOpen = !overflowOpen)}
+					class="flex items-center border-l border-[var(--color-border)] px-3 py-2.5 transition-colors sm:hidden
+					{overflowOpen
+						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+						: $page.url.pathname === '/snap' || $page.url.pathname === '/admin'
+							? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+							: 'text-[var(--color-muted)]'}"
+					aria-label="more"
+				>
+					<DotsThreeIcon size={16} weight="bold" />
+				</button>
+			</nav>
 
-	<!-- Player bar -->
-	<Player />
+			<!-- Connection status -->
+			<span class="text-[10px] text-[var(--color-muted)]">
+				{mpdStore.connected ? '●' : '○'}
+			</span>
+
+			<!-- Mobile overflow dropdown -->
+			{#if overflowOpen}
+				<div
+					class="absolute top-full right-0 z-50 border border-[var(--color-border)] bg-[var(--color-bg)] sm:hidden"
+					style="min-width: 140px"
+				>
+					<a
+						href="/snap"
+						class="flex items-center gap-2 border-b border-[var(--color-border)]/30 px-4 py-3 text-[10px] tracking-widest uppercase transition-colors
+						{$page.url.pathname === '/snap'
+							? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+							: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+					>
+						<SpeakerHighIcon size={13} weight="bold" />
+						snap
+					</a>
+					<a
+						href="/admin"
+						class="flex items-center gap-2 px-4 py-3 text-[10px] tracking-widest uppercase transition-colors
+						{$page.url.pathname === '/admin'
+							? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+							: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+					>
+						<GearIcon size={13} weight="bold" />
+						admin
+					</a>
+				</div>
+			{/if}
+		</header>
+
+		<!-- Main content -->
+		<main class="min-h-0 flex-1 overflow-auto">
+			{@render children()}
+		</main>
+
+		<!-- Player bar -->
+		<Player />
+	</div>
 </div>

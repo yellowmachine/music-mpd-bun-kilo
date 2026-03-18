@@ -1,6 +1,13 @@
 <script lang="ts">
 	import { mpdStore } from '$lib/mpd.svelte';
 	import QueueSong from '$lib/components/QueueSong.svelte';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
+
+	// Seed the store with server-fetched queue on every navigation to this page.
+	// SSE will keep it up to date afterwards.
+	mpdStore.queue = data.queue;
 </script>
 
 <ul class="divide-y-0">
