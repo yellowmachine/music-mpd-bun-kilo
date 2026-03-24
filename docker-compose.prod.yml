@@ -1,0 +1,71 @@
+services:
+  mpd:
+    build:
+      context: .
+      dockerfile: Dockerfile.mpd
+    depends_on:
+      - snapserver
+    volumes:
+      - ./music:/var/lib/mpd/music
+      - ./playlists:/var/lib/mpd/playlists
+      - ./mpd-db:/var/lib/mpd
+      - shared-fifo:/shared
+    restart: unless-stopped
+    ports:
+      - '6600:6600'
+
+  snapserver:
+    build:
+      context: .
+      dockerfile: Dockerfile.snapserver
+    volumes:
+      - ./snapserver.conf:/etc/snapserver.conf
+      - shared-fifo:/shared
+    restart: unless-stopped
+    ports:
+      - '1704:1704'
+      - '1705:1705'
+      - '1780:1780'
+
+  snapclient:
+    build:
+      context: .
+      dockerfile: Dockerfile.snapclient
+    command: snapclient ${SNAPCLIENT_OPTS}
+    depends_on:
+      - snapserver
+    restart: unless-stopped
+    devices:
+      - /dev/snd:/dev/snd
+    volumes:
+      - ./asound.conf:/etc/asound.conf:ro
+
+  svelte-mpd:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        MPD_HOST: mpd
+        MPD_PORT: 6600
+        SNAP_HOST: snapserver
+        SNAP_PORT: 1780
+        ORIGIN: http://192.168.0.169:3000
+        PORT: '3000'
+    environment:
+      NODE_ENV: production
+      MPD_HOST: mpd
+      MPD_PORT: '6600'
+      SNAP_HOST: snapserver
+      SNAP_PORT: '1780'
+      ORIGIN: http://192.168.0.169:3000
+      PORT: '3000'
+    depends_on:
+      - mpd
+      - snapserver
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - '3000:3000'
+
+volumes:
+  shared-fifo:
