@@ -25,4 +25,4 @@ vite.config.ts.timestamp-*
 /music
 
 # MPD runtime state
-mpd-db/mpdstate
+mpd-db/*
