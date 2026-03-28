@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { MusicNoteIcon, XIcon, PlayIcon } from 'phosphor-svelte';
+	import { MusicNoteIcon, XIcon, PlayIcon, BookmarkSimpleIcon } from 'phosphor-svelte';
 	import { removeFromQueue, playId } from '$lib/mpd.remote';
+	import AddToPlaylistPopup from '$lib/components/AddToPlaylistPopup.svelte';
 	import type { MpdQueueItem } from '$lib/mpd.types';
 
 	interface Props {
@@ -10,6 +11,8 @@
 	}
 
 	let { song, active, playing }: Props = $props();
+
+	let showPlaylistPopup = $state(false);
 </script>
 
 <li
@@ -81,6 +84,19 @@
 		<PlayIcon size={13} weight="fill" />
 	</button>
 
+	<!-- Add to playlist -->
+	<button
+		onclick={() => (showPlaylistPopup = true)}
+		class="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 sm:block
+			{active
+			? 'text-[var(--color-accent-fg)]'
+			: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+		aria-label="add to playlist"
+		title="Add to playlist"
+	>
+		<BookmarkSimpleIcon size={12} weight="bold" />
+	</button>
+
 	<!-- Remove -->
 	<button
 		onclick={() => removeFromQueue(song.id)}
@@ -92,4 +108,8 @@
 	>
 		<XIcon size={12} weight="bold" />
 	</button>
+
+	{#if showPlaylistPopup}
+		<AddToPlaylistPopup songUri={song.file} onclose={() => (showPlaylistPopup = false)} />
+	{/if}
 </li>

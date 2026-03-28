@@ -12,7 +12,8 @@
 		MusicNotesIcon,
 		GearIcon,
 		SpeakerHighIcon,
-		DotsThreeIcon
+		DotsThreeIcon,
+		ListPlusIcon
 	} from 'phosphor-svelte';
 
 	let { children } = $props();
@@ -171,6 +172,17 @@
 				>
 					<MagnifyingGlassIcon size={14} weight="bold" />
 					<span class="hidden sm:inline">search</span>
+				</a>
+				<a
+					href="/playlists"
+					aria-label="playlists"
+					class="flex items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors
+					{$page.url.pathname.startsWith('/playlists')
+						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+						: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+				>
+					<ListPlusIcon size={14} weight="bold" />
+					<span class="hidden sm:inline">playlists</span>
 				</a>
 
 				<!-- Desktop only: snap + admin inline -->

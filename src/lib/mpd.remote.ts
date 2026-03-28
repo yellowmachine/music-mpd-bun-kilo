@@ -208,6 +208,61 @@ export const snapSetMute = command(
 	}
 );
 
+// --- Playlists (stored) ---
+
+export interface StoredPlaylist {
+	playlist: string;
+	last_modified?: string;
+}
+
+export interface PlaylistSong {
+	file: string;
+	title?: string;
+	artist?: string;
+	album?: string;
+	track?: string;
+	date?: string;
+	duration?: number;
+}
+
+export const getPlaylists = query(async () => {
+	const mpd = await getClient();
+	return mpd.api.playlists.get<StoredPlaylist>();
+});
+
+export const getPlaylistSongs = query('unchecked', async (name: string) => {
+	const mpd = await getClient();
+	return mpd.api.playlists.listinfo<PlaylistSong>(name);
+});
+
+export const addSongToPlaylist = command(
+	'unchecked',
+	async ({ uri, playlist }: { uri: string; playlist: string }) => {
+		const mpd = await getClient();
+		await mpd.api.playlists.add(playlist, uri);
+	}
+);
+
+export const addPlaylistToQueue = command('unchecked', async (name: string) => {
+	const mpd = await getClient();
+	await mpd.api.playlists.load(name);
+});
+
+export const playPlaylist = command('unchecked', async (name: string) => {
+	const mpd = await getClient();
+	await mpd.api.queue.clear();
+	await mpd.api.playlists.load(name);
+	await mpd.api.playback.play();
+});
+
+export const removeFromPlaylist = command(
+	'unchecked',
+	async ({ playlist, pos }: { playlist: string; pos: number }) => {
+		const mpd = await getClient();
+		await mpd.api.playlists.deleteAt(playlist, String(pos));
+	}
+);
+
 // --- Search ---
 
 export const searchSongs = query('unchecked', async (q: string) => {

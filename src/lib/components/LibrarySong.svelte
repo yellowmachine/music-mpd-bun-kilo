@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { PlayIcon, PlusIcon } from 'phosphor-svelte';
+	import { PlayIcon, PlusIcon, BookmarkSimpleIcon } from 'phosphor-svelte';
 	import { addToQueue, playNow } from '$lib/mpd.remote';
+	import AddToPlaylistPopup from '$lib/components/AddToPlaylistPopup.svelte';
 	import type { LibraryFile } from '$lib/mpd.types';
 
 	interface Props {
@@ -12,6 +13,7 @@
 	let adding = $state(false);
 	let added = $state(false);
 	let playing = $state(false);
+	let showPlaylistPopup = $state(false);
 
 	async function handleAdd() {
 		if (adding) return;
@@ -98,5 +100,20 @@
 				<PlusIcon size={11} weight="bold" />
 			{/if}
 		</button>
+
+		<!-- Add to playlist -->
+		<button
+			onclick={() => (showPlaylistPopup = true)}
+			class="border border-[var(--color-border)] p-1 transition-colors
+				hover:bg-[var(--color-fg)] hover:text-[var(--color-accent-fg)]"
+			aria-label="add to playlist"
+			title="Add to playlist"
+		>
+			<BookmarkSimpleIcon size={11} weight="bold" />
+		</button>
 	</div>
+
+	{#if showPlaylistPopup}
+		<AddToPlaylistPopup songUri={song.file} onclose={() => (showPlaylistPopup = false)} />
+	{/if}
 </li>
