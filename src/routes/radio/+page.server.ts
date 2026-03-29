@@ -5,7 +5,7 @@ export const load: PageServerLoad = async ({ fetch }) => {
 	try {
 		const res = await fetch(
 			'https://de1.api.radio-browser.info/json/stations/topvote?limit=40&hidebroken=true',
-			{ headers: { 'User-Agent': 'svelte-mpd/1.0' } }
+			{ headers: { 'User-Agent': 'svelte-mpd/1.0' }, signal: AbortSignal.timeout(8000) }
 		);
 		const stations: RadioStation[] = await res.json();
 		return { stations };

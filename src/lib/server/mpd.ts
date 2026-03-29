@@ -67,6 +67,9 @@ export async function getClient(): Promise<MPDApi.ClientAPI> {
 		});
 
 		return c;
+	}).catch((err) => {
+		cmdConnecting = null; // allow retry on next call
+		throw err;
 	});
 
 	return cmdConnecting;

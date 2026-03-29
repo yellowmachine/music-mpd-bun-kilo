@@ -17,7 +17,8 @@ async function rpc<T>(method: string, params?: unknown): Promise<T> {
 		headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
 		body
 	});
-	const json = await res.json();
+	const json = await res.json() as { error?: { message: string }; result?: T } | null;
+	if (!json) throw new Error('Empty response from Snapserver');
 	if (json.error) throw new Error(`Snapserver RPC error: ${json.error.message}`);
 	return json.result as T;
 }

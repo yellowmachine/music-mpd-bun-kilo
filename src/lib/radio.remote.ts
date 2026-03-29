@@ -21,7 +21,8 @@ export const searchRadios = query('unchecked', async (q: string): Promise<RadioS
 		reverse: 'true'
 	});
 	const res = await fetch(`https://de1.api.radio-browser.info/json/stations/search?${params}`, {
-		headers: { 'User-Agent': 'svelte-mpd/1.0' }
+		headers: { 'User-Agent': 'svelte-mpd/1.0' },
+		signal: AbortSignal.timeout(8000)
 	});
 	if (!res.ok) return [];
 	return res.json();
