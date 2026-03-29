@@ -14,8 +14,9 @@ export default defineConfig({
 			registerType: 'autoUpdate',
 			// SvelteKit SSR: service worker must not intercept SSR routes
 			workbox: {
-				globPatterns: ['**/*.{js,css,html,svg,png,ico,woff,woff2}'],
-				navigateFallback: null
+				globPatterns: ['**/*.{js,css,svg,png,ico,woff,woff2}'],
+				navigateFallback: null,
+				cleanupOutdatedCaches: true
 			},
 			manifest: {
 				name: 'svelte-mpd',
