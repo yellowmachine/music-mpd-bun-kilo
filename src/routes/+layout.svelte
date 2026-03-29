@@ -129,7 +129,7 @@
 
 <div class="flex h-screen flex-col overflow-hidden">
 	<div
-		class="mx-auto flex w-full max-w-2xl flex-1 flex-col overflow-hidden border-x border-[var(--color-border)]"
+		class="mx-auto flex w-full max-w-3xl flex-1 flex-col overflow-hidden border-x border-[var(--color-border)]"
 	>
 		<!-- Navbar -->
 		<header
@@ -174,30 +174,29 @@
 					<MagnifyingGlassIcon size={14} weight="bold" />
 					<span class="hidden sm:inline">search</span>
 				</a>
+				<!-- Desktop only: playlists, radio, snap, admin -->
 				<a
 					href="/playlists"
 					aria-label="playlists"
-					class="flex items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors
+					class="hidden items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors sm:flex
 					{$page.url.pathname.startsWith('/playlists')
 						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
 						: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
 				>
 					<ListPlusIcon size={14} weight="bold" />
-					<span class="hidden sm:inline">playlists</span>
+					playlists
 				</a>
 				<a
 					href="/radio"
 					aria-label="radio"
-					class="flex items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors
+					class="hidden items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors sm:flex
 					{$page.url.pathname.startsWith('/radio')
 						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
 						: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
 				>
 					<RadioIcon size={14} weight="bold" />
-					<span class="hidden sm:inline">radio</span>
+					radio
 				</a>
-
-				<!-- Desktop only: snap + admin inline -->
 				<a
 					href="/snap"
 					aria-label="snapcast"
@@ -225,11 +224,13 @@
 				<button
 					onclick={() => (overflowOpen = !overflowOpen)}
 					class="flex items-center border-l border-[var(--color-border)] px-3 py-2.5 transition-colors sm:hidden
-					{overflowOpen
+					{overflowOpen ||
+					$page.url.pathname.startsWith('/playlists') ||
+					$page.url.pathname.startsWith('/radio') ||
+					$page.url.pathname === '/snap' ||
+					$page.url.pathname === '/admin'
 						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-						: $page.url.pathname === '/snap' || $page.url.pathname === '/admin'
-							? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-							: 'text-[var(--color-muted)]'}"
+						: 'text-[var(--color-muted)]'}"
 					aria-label="more"
 				>
 					<DotsThreeIcon size={16} weight="bold" />
@@ -247,6 +248,26 @@
 					class="absolute top-full right-0 z-50 border border-[var(--color-border)] bg-[var(--color-bg)] sm:hidden"
 					style="min-width: 140px"
 				>
+					<a
+						href="/playlists"
+						class="flex items-center gap-2 border-b border-[var(--color-border)]/30 px-4 py-3 text-[10px] tracking-widest uppercase transition-colors
+						{$page.url.pathname.startsWith('/playlists')
+							? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+							: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+					>
+						<ListPlusIcon size={13} weight="bold" />
+						playlists
+					</a>
+					<a
+						href="/radio"
+						class="flex items-center gap-2 border-b border-[var(--color-border)]/30 px-4 py-3 text-[10px] tracking-widest uppercase transition-colors
+						{$page.url.pathname.startsWith('/radio')
+							? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+							: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+					>
+						<RadioIcon size={13} weight="bold" />
+						radio
+					</a>
 					<a
 						href="/snap"
 						class="flex items-center gap-2 border-b border-[var(--color-border)]/30 px-4 py-3 text-[10px] tracking-widest uppercase transition-colors
