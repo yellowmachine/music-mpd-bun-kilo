@@ -13,7 +13,8 @@
 		GearIcon,
 		SpeakerHighIcon,
 		DotsThreeIcon,
-		ListPlusIcon
+		ListPlusIcon,
+		RadioIcon
 	} from 'phosphor-svelte';
 
 	let { children } = $props();
@@ -183,6 +184,17 @@
 				>
 					<ListPlusIcon size={14} weight="bold" />
 					<span class="hidden sm:inline">playlists</span>
+				</a>
+				<a
+					href="/radio"
+					aria-label="radio"
+					class="flex items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors
+					{$page.url.pathname.startsWith('/radio')
+						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+						: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+				>
+					<RadioIcon size={14} weight="bold" />
+					<span class="hidden sm:inline">radio</span>
 				</a>
 
 				<!-- Desktop only: snap + admin inline -->
