@@ -1,0 +1,13 @@
+FROM alpine:latest
+
+LABEL maintainer="Tu Nombre <tu@email.com>"
+
+# Instala Snapclient
+RUN apk add --no-cache snapcast-client alsa-utils pulseaudio-utils
+
+# Crea el directorio para la configuración y posibles volúmenes
+RUN mkdir -p /shared
+
+# Permite pasar argumentos de conexión por variables de entorno o comando
+# Por defecto, conecta a snapserver (nombre de servicio en red bridge)
+CMD ["snapclient", "-h", "snapserver"]
