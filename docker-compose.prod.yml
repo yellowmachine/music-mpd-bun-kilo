@@ -47,16 +47,7 @@ services:
       - ./asound.conf:/etc/asound.conf:ro
 
   svelte-mpd:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        MPD_HOST: mpd
-        MPD_PORT: 6600
-        SNAP_HOST: snapserver
-        SNAP_PORT: 1780
-        ORIGIN: http://192.168.0.169:3000
-        PORT: '3000'
+    image: ghcr.io/yellowmachine/music-mpd-bun-kilo:latest
     environment:
       NODE_ENV: production
       MPD_HOST: mpd
