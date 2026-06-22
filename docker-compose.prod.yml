@@ -6,7 +6,7 @@ services:
     depends_on:
       - snapserver
     volumes:
-      - ./music:/var/lib/mpd/music
+      - /music:/var/lib/mpd/music
       - ./playlists:/var/lib/mpd/playlists
       - ./mpd-db:/var/lib/mpd
       - shared-fifo:/shared
@@ -37,7 +37,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.snapclient
-    command: snapclient ${SNAPCLIENT_OPTS}
+    command: snapclient -h snapserver --hostID arriba -s Headphones
     depends_on:
       - snapserver
     restart: unless-stopped
@@ -54,7 +54,7 @@ services:
       MPD_PORT: '6600'
       SNAP_HOST: snapserver
       SNAP_PORT: '1780'
-      ORIGIN: http://192.168.0.169:3000
+      ORIGIN: http://192.168.68.50:3000
       PORT: '3000'
     depends_on:
       mpd:
