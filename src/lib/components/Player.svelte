@@ -67,6 +67,10 @@
 		const input = e.currentTarget as HTMLInputElement;
 		await setVolume(Number(input.value));
 	}
+
+	async function stepVolume(delta: number) {
+		await setVolume(Math.max(0, Math.min(100, mpdStore.volume + delta)));
+	}
 </script>
 
 <div class="border-t-2 border-[var(--color-border)] bg-[var(--color-bg)]">
@@ -199,6 +203,11 @@
 			{:else}
 				<SpeakerHighIcon size={15} />
 			{/if}
+			<button
+				onclick={() => stepVolume(-5)}
+				class="text-[var(--color-muted)] hover:text-[var(--color-fg)] leading-none"
+				aria-label="decrease volume"
+			>−</button>
 			<input
 				type="range"
 				min="0"
@@ -208,6 +217,11 @@
 				class="h-0.5 w-20 cursor-pointer appearance-none bg-[var(--color-fg)] accent-[var(--color-fg)]"
 				aria-label="volume"
 			/>
+			<button
+				onclick={() => stepVolume(5)}
+				class="text-[var(--color-muted)] hover:text-[var(--color-fg)] leading-none"
+				aria-label="increase volume"
+			>+</button>
 			<span class="w-6 text-right text-[10px] text-[var(--color-muted)]">{mpdStore.volume}</span>
 		</div>
 	</div>

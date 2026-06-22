@@ -18,6 +18,12 @@
 		await snapSetVolume({ id, percent });
 	}
 
+	async function stepSnapVolume(id: string, current: number, delta: number) {
+		const percent = Math.max(0, Math.min(100, current + delta));
+		localVolumes[id] = percent;
+		await snapSetVolume({ id, percent });
+	}
+
 	async function handleMute(id: string, muted: boolean) {
 		await snapSetMute({ id, muted });
 	}
@@ -65,6 +71,12 @@
 						{/if}
 					</button>
 
+					<button
+						onclick={() => stepSnapVolume(client.id, getVolume(client.id, client.volume.percent), -5)}
+						disabled={client.volume.muted || !client.connected}
+						class="text-[var(--color-muted)] hover:text-[var(--color-fg)] leading-none disabled:opacity-30"
+						aria-label="decrease volume"
+					>−</button>
 					<input
 						type="range"
 						min="0"
@@ -79,6 +91,12 @@
 							disabled:opacity-30"
 						aria-label="volume for {client.name}"
 					/>
+					<button
+						onclick={() => stepSnapVolume(client.id, getVolume(client.id, client.volume.percent), 5)}
+						disabled={client.volume.muted || !client.connected}
+						class="text-[var(--color-muted)] hover:text-[var(--color-fg)] leading-none disabled:opacity-30"
+						aria-label="increase volume"
+					>+</button>
 
 					<span class="w-7 text-right text-[10px] text-[var(--color-muted)] tabular-nums">
 						{getVolume(client.id, client.volume.percent)}
