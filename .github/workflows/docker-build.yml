@@ -63,3 +63,9 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            MPD_HOST=mpd
+            MPD_PORT=6600
+            SNAP_HOST=snapserver
+            SNAP_PORT=1780
+            PORT=3000
