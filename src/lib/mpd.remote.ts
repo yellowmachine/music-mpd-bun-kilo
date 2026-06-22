@@ -263,6 +263,14 @@ export const removeFromPlaylist = command(
 	}
 );
 
+export const moveInPlaylist = command(
+	'unchecked',
+	async ({ playlist, from, to }: { playlist: string; from: number; to: number }) => {
+		const mpd = await getClient();
+		await mpd.api.playlists.moveAt(playlist, String(from), String(to));
+	}
+);
+
 // --- Search ---
 
 export const searchSongs = query('unchecked', async (q: string) => {

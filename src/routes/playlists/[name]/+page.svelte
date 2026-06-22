@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { PlusIcon, TrashIcon } from 'phosphor-svelte';
-	import { addPlaylistToQueue, removeFromPlaylist } from '$lib/mpd.remote';
+	import { PlusIcon, TrashIcon, ArrowUpIcon, ArrowDownIcon } from 'phosphor-svelte';
+	import { addPlaylistToQueue, removeFromPlaylist, moveInPlaylist } from '$lib/mpd.remote';
+	import type { PlaylistSong } from '$lib/mpd.remote';
 
 	let { data } = $props();
 
@@ -11,6 +12,13 @@
 	let addingToQueue = $state(false);
 	let addedToQueue = $state(false);
 	let removingPos = $state<number | null>(null);
+	let movingPos = $state<number | null>(null);
+
+	// Optimistic local order; resets when data refreshes from server
+	let localSongs = $state<PlaylistSong[]>([]);
+	$effect(() => {
+		localSongs = [...data.songs];
+	});
 
 	async function handleAddToQueue() {
 		if (addingToQueue) return;
@@ -32,6 +40,24 @@
 			await invalidateAll();
 		} finally {
 			removingPos = null;
+		}
+	}
+
+	async function handleMove(from: number, to: number) {
+		if (movingPos !== null) return;
+		movingPos = from;
+		// Optimistic update
+		const next = [...localSongs];
+		const [song] = next.splice(from, 1);
+		next.splice(to, 0, song);
+		localSongs = next;
+		try {
+			await moveInPlaylist({ playlist: name, from, to });
+			await invalidateAll();
+		} catch {
+			localSongs = [...data.songs]; // rollback on error
+		} finally {
+			movingPos = null;
 		}
 	}
 </script>
@@ -71,11 +97,11 @@
 </div>
 
 <!-- Songs -->
-{#if data.songs.length === 0}
+{#if localSongs.length === 0}
 	<p class="py-8 text-center text-xs text-[var(--color-muted)]">— playlist is empty —</p>
 {:else}
 	<ul>
-		{#each data.songs as song, i}
+		{#each localSongs as song, i}
 			<li
 				class="group flex items-center gap-3 border-b border-[var(--color-border)]/30 px-4 py-2 hover:bg-[var(--color-fg)]/5"
 			>
@@ -104,6 +130,26 @@
 						{Math.floor(song.duration / 60)}:{String(Math.floor(song.duration % 60)).padStart(2, '0')}
 					</span>
 				{/if}
+
+				<!-- Move up / down -->
+				<div class="flex shrink-0 flex-col opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
+					<button
+						onclick={() => handleMove(i, i - 1)}
+						disabled={i === 0 || movingPos !== null}
+						class="p-0.5 text-[var(--color-muted)] transition-colors hover:text-[var(--color-fg)] disabled:opacity-20"
+						aria-label="move up"
+					>
+						<ArrowUpIcon size={11} weight="bold" />
+					</button>
+					<button
+						onclick={() => handleMove(i, i + 1)}
+						disabled={i === localSongs.length - 1 || movingPos !== null}
+						class="p-0.5 text-[var(--color-muted)] transition-colors hover:text-[var(--color-fg)] disabled:opacity-20"
+						aria-label="move down"
+					>
+						<ArrowDownIcon size={11} weight="bold" />
+					</button>
+				</div>
 
 				<button
 					onclick={() => handleRemove(i)}
