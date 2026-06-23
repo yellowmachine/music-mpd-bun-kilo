@@ -71,6 +71,17 @@
 	async function stepVolume(delta: number) {
 		await setVolume(Math.max(0, Math.min(100, mpdStore.volume + delta)));
 	}
+
+	let prevVolume = $state(100);
+
+	async function toggleMute() {
+		if (mpdStore.volume === 0) {
+			await setVolume(prevVolume > 0 ? prevVolume : 50);
+		} else {
+			prevVolume = mpdStore.volume;
+			await setVolume(0);
+		}
+	}
 </script>
 
 <div class="border-t-2 border-[var(--color-border)] bg-[var(--color-bg)]">
@@ -170,7 +181,7 @@
 		<!-- Flags -->
 		<div class="flex items-center gap-1">
 			<button
-				onclick={() => setRandom(!mpdStore.random)}
+				onclick={() => setRandom(mpdStore.random ? '0' : '1')}
 				class="rounded p-1.5 {mpdStore.random
 					? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
 					: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
@@ -180,7 +191,7 @@
 			</button>
 
 			<button
-				onclick={() => setRepeat(!mpdStore.repeat)}
+				onclick={() => setRepeat(mpdStore.repeat ? '0' : '1')}
 				class="rounded p-1.5 {mpdStore.repeat
 					? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
 					: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
@@ -196,13 +207,19 @@
 
 		<!-- Volume -->
 		<div class="flex items-center gap-2">
-			{#if mpdStore.volume === 0}
-				<SpeakerNoneIcon size={15} />
-			{:else if mpdStore.volume < 50}
-				<SpeakerLowIcon size={15} />
-			{:else}
-				<SpeakerHighIcon size={15} />
-			{/if}
+			<button
+				onclick={toggleMute}
+				class="text-[var(--color-muted)] hover:text-[var(--color-fg)]"
+				aria-label={mpdStore.volume === 0 ? 'unmute' : 'mute'}
+			>
+				{#if mpdStore.volume === 0}
+					<SpeakerNoneIcon size={15} />
+				{:else if mpdStore.volume < 50}
+					<SpeakerLowIcon size={15} />
+				{:else}
+					<SpeakerHighIcon size={15} />
+				{/if}
+			</button>
 			<button
 				onclick={() => stepVolume(-5)}
 				class="text-[var(--color-muted)] hover:text-[var(--color-fg)] leading-none"
