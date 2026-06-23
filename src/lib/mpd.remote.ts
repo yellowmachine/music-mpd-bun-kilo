@@ -109,14 +109,16 @@ export const seek = command('unchecked', async (seconds: number) => {
 	await mpd.api.playback.seekcur(String(seconds));
 });
 
-export const setRandom = command('unchecked', async (value: '0' | '1') => {
+export const toggleRandom = command(async () => {
 	const mpd = await getClient();
-	await mpd.api.playback.random(value);
+	const status = await mpd.api.status.get<MpdStatus>();
+	await mpd.api.playback.random(!status.random);
 });
 
-export const setRepeat = command('unchecked', async (value: '0' | '1') => {
+export const toggleRepeat = command(async () => {
 	const mpd = await getClient();
-	await mpd.api.playback.repeat(value);
+	const status = await mpd.api.status.get<MpdStatus>();
+	await mpd.api.playback.repeat(!status.repeat);
 });
 
 export const addToQueue = command('unchecked', async (uri: string) => {

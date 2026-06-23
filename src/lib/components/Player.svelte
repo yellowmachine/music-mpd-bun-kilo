@@ -21,8 +21,8 @@
 		prev,
 		setVolume,
 		seek,
-		setRandom,
-		setRepeat
+		toggleRandom,
+		toggleRepeat
 	} from '$lib/mpd.remote';
 
 	function formatTime(seconds: number): string {
@@ -181,7 +181,7 @@
 		<!-- Flags -->
 		<div class="flex items-center gap-1">
 			<button
-				onclick={() => setRandom(mpdStore.random ? '0' : '1')}
+				onclick={() => toggleRandom()}
 				class="rounded p-1.5 {mpdStore.random
 					? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
 					: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
@@ -191,7 +191,7 @@
 			</button>
 
 			<button
-				onclick={() => setRepeat(mpdStore.repeat ? '0' : '1')}
+				onclick={() => toggleRepeat()}
 				class="rounded p-1.5 {mpdStore.repeat
 					? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
 					: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
