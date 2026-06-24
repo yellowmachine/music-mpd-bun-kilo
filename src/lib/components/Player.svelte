@@ -131,7 +131,7 @@
 		<span>{formatTime(mpdStore.duration)}</span>
 	</div>
 
-	<!-- Controls -->
+	<!-- Row 1: Playback + Flags -->
 	<div class="flex items-center justify-between px-4 py-2">
 		<!-- Playback -->
 		<div class="flex items-center gap-1">
@@ -204,42 +204,42 @@
 				{/if}
 			</button>
 		</div>
+	</div>
 
-		<!-- Volume -->
-		<div class="flex items-center gap-2">
-			<button
-				onclick={toggleMute}
-				class="text-[var(--color-muted)] hover:text-[var(--color-fg)]"
-				aria-label={mpdStore.volume === 0 ? 'unmute' : 'mute'}
-			>
-				{#if mpdStore.volume === 0}
-					<SpeakerNoneIcon size={15} />
-				{:else if mpdStore.volume < 50}
-					<SpeakerLowIcon size={15} />
-				{:else}
-					<SpeakerHighIcon size={15} />
-				{/if}
-			</button>
-			<button
-				onclick={() => stepVolume(-5)}
-				class="text-[var(--color-muted)] hover:text-[var(--color-fg)] leading-none"
-				aria-label="decrease volume"
-			>−</button>
-			<input
-				type="range"
-				min="0"
-				max="100"
-				value={mpdStore.volume}
-				onchange={handleVolume}
-				class="h-0.5 w-20 cursor-pointer appearance-none bg-[var(--color-fg)] accent-[var(--color-fg)]"
-				aria-label="volume"
-			/>
-			<button
-				onclick={() => stepVolume(5)}
-				class="text-[var(--color-muted)] hover:text-[var(--color-fg)] leading-none"
-				aria-label="increase volume"
-			>+</button>
-			<span class="w-6 text-right text-[10px] text-[var(--color-muted)]">{mpdStore.volume}</span>
-		</div>
+	<!-- Row 2: Volume -->
+	<div class="flex items-center gap-2 px-4 pb-2">
+		<button
+			onclick={toggleMute}
+			class="text-[var(--color-muted)] hover:text-[var(--color-fg)]"
+			aria-label={mpdStore.volume === 0 ? 'unmute' : 'mute'}
+		>
+			{#if mpdStore.volume === 0}
+				<SpeakerNoneIcon size={15} />
+			{:else if mpdStore.volume < 50}
+				<SpeakerLowIcon size={15} />
+			{:else}
+				<SpeakerHighIcon size={15} />
+			{/if}
+		</button>
+		<button
+			onclick={() => stepVolume(-5)}
+			class="text-[var(--color-muted)] hover:text-[var(--color-fg)] leading-none"
+			aria-label="decrease volume"
+		>−</button>
+		<input
+			type="range"
+			min="0"
+			max="100"
+			value={mpdStore.volume}
+			onchange={handleVolume}
+			class="h-0.5 flex-1 cursor-pointer appearance-none bg-[var(--color-fg)] accent-[var(--color-fg)]"
+			aria-label="volume"
+		/>
+		<button
+			onclick={() => stepVolume(5)}
+			class="text-[var(--color-muted)] hover:text-[var(--color-fg)] leading-none"
+			aria-label="increase volume"
+		>+</button>
+		<span class="w-6 text-right text-[10px] text-[var(--color-muted)]">{mpdStore.volume}</span>
 	</div>
 </div>
