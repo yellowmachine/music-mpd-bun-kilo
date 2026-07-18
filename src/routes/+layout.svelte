@@ -15,7 +15,8 @@
 		DotsThreeIcon,
 		ListPlusIcon,
 		RadioIcon,
-		RssIcon
+		RssIcon,
+		ArticleIcon
 	} from 'phosphor-svelte';
 
 	let { children } = $props();
@@ -210,6 +211,17 @@
 					podcasts
 				</a>
 				<a
+					href="/articles"
+					aria-label="articles"
+					class="hidden items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors sm:flex
+					{$page.url.pathname.startsWith('/articles')
+						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+						: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+				>
+					<ArticleIcon size={14} weight="bold" />
+					articles
+				</a>
+				<a
 					href="/snap"
 					aria-label="snapcast"
 					class="hidden items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors sm:flex
@@ -240,6 +252,7 @@
 					$page.url.pathname.startsWith('/playlists') ||
 					$page.url.pathname.startsWith('/radio') ||
 					$page.url.pathname.startsWith('/podcasts') ||
+					$page.url.pathname.startsWith('/articles') ||
 					$page.url.pathname === '/snap' ||
 					$page.url.pathname === '/admin'
 						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
@@ -290,6 +303,16 @@
 					>
 						<RssIcon size={13} weight="bold" />
 						podcasts
+					</a>
+					<a
+						href="/articles"
+						class="flex items-center gap-2 border-b border-[var(--color-border)]/30 px-4 py-3 text-[10px] tracking-widest uppercase transition-colors
+						{$page.url.pathname.startsWith('/articles')
+							? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+							: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+					>
+						<ArticleIcon size={13} weight="bold" />
+						articles
 					</a>
 					<a
 						href="/snap"

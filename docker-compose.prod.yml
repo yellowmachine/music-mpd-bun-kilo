@@ -46,6 +46,12 @@ services:
     volumes:
       - ./asound.conf:/etc/asound.conf:ro
 
+  piper:
+    build:
+      context: .
+      dockerfile: Dockerfile.piper
+    restart: unless-stopped
+
   svelte-mpd:
     image: ghcr.io/yellowmachine/music-mpd-bun-kilo:latest
     environment:
@@ -54,6 +60,8 @@ services:
       MPD_PORT: '6600'
       SNAP_HOST: snapserver
       SNAP_PORT: '1780'
+      PIPER_HOST: piper
+      PIPER_PORT: '5000'
       ORIGIN: http://192.168.68.50:3000
       PORT: '3000'
     volumes:
@@ -62,6 +70,8 @@ services:
       mpd:
         condition: service_healthy
       snapserver:
+        condition: service_started
+      piper:
         condition: service_started
     restart: unless-stopped
     privileged: true

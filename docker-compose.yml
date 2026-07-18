@@ -27,6 +27,12 @@ services:
       - '1705:1705'
       - '1780:1780'
 
+  piper:
+    build:
+      context: .
+      dockerfile: Dockerfile.piper
+    restart: unless-stopped
+
   svelte-mpd:
     build:
       context: .
@@ -36,6 +42,8 @@ services:
         MPD_PORT: 6600
         SNAP_HOST: snapserver
         SNAP_PORT: 1780
+        PIPER_HOST: piper
+        PIPER_PORT: 5000
         ORIGIN: http://192.168.0.169:3000
         PORT: '3000'
     environment:
@@ -44,6 +52,8 @@ services:
       MPD_PORT: '6600'
       SNAP_HOST: snapserver
       SNAP_PORT: '1780'
+      PIPER_HOST: piper
+      PIPER_PORT: '5000'
       ORIGIN: http://192.168.0.169:3000
       PORT: '3000'
     volumes:
@@ -51,6 +61,7 @@ services:
     depends_on:
       - mpd
       - snapserver
+      - piper
     restart: unless-stopped
     privileged: true
     ports:
