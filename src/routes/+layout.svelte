@@ -295,6 +295,12 @@
 		<!-- Main content -->
 		<main class="min-h-0 flex-1 overflow-auto">
 			{@render children()}
+
+			<footer
+				class="border-t border-[var(--color-border)]/30 px-4 py-3 text-center text-[10px] tracking-widest text-[var(--color-muted)] uppercase"
+			>
+				built with the help of claude
+			</footer>
 		</main>
 
 		<!-- Player bar -->
