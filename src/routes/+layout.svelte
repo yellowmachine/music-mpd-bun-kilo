@@ -176,7 +176,18 @@
 					<MagnifyingGlassIcon size={14} weight="bold" />
 					<span class="hidden sm:inline">search</span>
 				</a>
-				<!-- Overflow menu: playlists, radio, podcasts, articles, snap, admin.
+				<a
+					href="/playlists"
+					aria-label="playlists"
+					class="flex items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors
+					{$page.url.pathname.startsWith('/playlists')
+						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+						: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+				>
+					<ListPlusIcon size={14} weight="bold" />
+					<span class="hidden sm:inline">playlists</span>
+				</a>
+				<!-- Overflow menu: radio, podcasts, articles, snap, admin.
 				     Always collapsed here (not just on mobile) — the app shell is capped
 				     at max-w-3xl regardless of screen size, so there's never enough room
 				     to show every section as its own tab, laptop included. -->
@@ -184,7 +195,6 @@
 					onclick={() => (overflowOpen = !overflowOpen)}
 					class="flex items-center border-l border-[var(--color-border)] px-3 py-2.5 transition-colors
 					{overflowOpen ||
-					$page.url.pathname.startsWith('/playlists') ||
 					$page.url.pathname.startsWith('/radio') ||
 					$page.url.pathname.startsWith('/podcasts') ||
 					$page.url.pathname.startsWith('/articles') ||
@@ -209,16 +219,6 @@
 					class="absolute top-full right-0 z-50 border border-[var(--color-border)] bg-[var(--color-bg)]"
 					style="min-width: 140px"
 				>
-					<a
-						href="/playlists"
-						class="flex items-center gap-2 border-b border-[var(--color-border)]/30 px-4 py-3 text-[10px] tracking-widest uppercase transition-colors
-						{$page.url.pathname.startsWith('/playlists')
-							? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-							: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
-					>
-						<ListPlusIcon size={13} weight="bold" />
-						playlists
-					</a>
 					<a
 						href="/radio"
 						class="flex items-center gap-2 border-b border-[var(--color-border)]/30 px-4 py-3 text-[10px] tracking-widest uppercase transition-colors
