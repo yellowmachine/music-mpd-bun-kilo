@@ -22,7 +22,8 @@
 		setVolume,
 		seek,
 		toggleRandom,
-		toggleRepeat
+		toggleRepeat,
+		toggleSingle
 	} from '$lib/mpd.remote';
 
 	function formatTime(seconds: number): string {
@@ -197,11 +198,17 @@
 					: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
 				aria-label="repeat"
 			>
-				{#if mpdStore.single}
-					<RepeatOnceIcon size={15} weight="bold" />
-				{:else}
-					<RepeatIcon size={15} weight="bold" />
-				{/if}
+				<RepeatIcon size={15} weight="bold" />
+			</button>
+
+			<button
+				onclick={() => toggleSingle()}
+				class="rounded p-1.5 {mpdStore.single
+					? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+					: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+				aria-label="single"
+			>
+				<RepeatOnceIcon size={15} weight="bold" />
 			</button>
 		</div>
 	</div>
@@ -232,7 +239,7 @@
 			max="100"
 			value={mpdStore.volume}
 			onchange={handleVolume}
-			class="h-0.5 flex-1 cursor-pointer appearance-none bg-[var(--color-fg)] accent-[var(--color-fg)]"
+			class="flex-1 text-[var(--color-fg)]"
 			aria-label="volume"
 		/>
 		<button

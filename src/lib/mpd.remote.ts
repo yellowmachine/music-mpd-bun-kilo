@@ -121,6 +121,12 @@ export const toggleRepeat = command(async () => {
 	await mpd.api.playback.repeat(!status.repeat);
 });
 
+export const toggleSingle = command(async () => {
+	const mpd = await getClient();
+	const status = await mpd.api.status.get<MpdStatus>();
+	await mpd.api.playback.single(!status.single);
+});
+
 export const addToQueue = command('unchecked', async (uri: string) => {
 	const mpd = await getClient();
 	await mpd.api.queue.add(uri);
