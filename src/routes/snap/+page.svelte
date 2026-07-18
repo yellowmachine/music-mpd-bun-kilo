@@ -87,8 +87,7 @@
 						}}
 						onchange={(e) => handleVolume(client.id, e)}
 						disabled={client.volume.muted || !client.connected}
-						class="h-0.5 w-28 cursor-pointer appearance-none bg-[var(--color-fg)] accent-[var(--color-fg)]
-							disabled:opacity-30"
+						class="w-28 text-[var(--color-fg)] disabled:opacity-30"
 						aria-label="volume for {client.name}"
 					/>
 					<button

@@ -69,4 +69,43 @@
 	::-webkit-scrollbar-thumb {
 		background: var(--color-fg);
 	}
+
+	/* Range sliders: hit area is taller than the visible track so clicking
+	   near the line (not just exactly on it) still registers. */
+	input[type='range'] {
+		appearance: none;
+		-webkit-appearance: none;
+		background: transparent;
+		height: 20px;
+		cursor: pointer;
+	}
+	input[type='range']:disabled {
+		cursor: default;
+	}
+	input[type='range']::-webkit-slider-runnable-track {
+		height: 2px;
+		background: currentColor;
+		border-radius: 1px;
+	}
+	input[type='range']::-moz-range-track {
+		height: 2px;
+		background: currentColor;
+		border-radius: 1px;
+	}
+	input[type='range']::-webkit-slider-thumb {
+		appearance: none;
+		-webkit-appearance: none;
+		width: 10px;
+		height: 10px;
+		margin-top: -4px;
+		border-radius: 50%;
+		background: currentColor;
+	}
+	input[type='range']::-moz-range-thumb {
+		width: 10px;
+		height: 10px;
+		border: none;
+		border-radius: 50%;
+		background: currentColor;
+	}
 }
