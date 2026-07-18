@@ -9,6 +9,8 @@ export interface ArticleRow {
 	id: number;
 	source: 'rss';
 	source_ref: string;
+	segment_index: number;
+	segment_count: number;
 	feed_url: string;
 	url: string;
 	title: string;
@@ -42,13 +44,17 @@ export function getArticleById(id: number): ArticleRow | undefined {
 	return readArticles().find((a) => a.id === id);
 }
 
-export function findByRef(source: ArticleRow['source'], ref: string): ArticleRow | undefined {
-	return readArticles().find((a) => a.source === source && a.source_ref === ref);
+export function findSegmentsByRef(source: ArticleRow['source'], ref: string): ArticleRow[] {
+	return readArticles()
+		.filter((a) => a.source === source && a.source_ref === ref)
+		.sort((a, b) => a.segment_index - b.segment_index);
 }
 
 export function insertArticle(row: {
 	source: ArticleRow['source'];
 	source_ref: string;
+	segment_index: number;
+	segment_count: number;
 	feed_url: string;
 	url: string;
 	title: string;

@@ -10,8 +10,7 @@ import {
 	type ParsedFeedItem
 } from '$lib/server/article-feeds';
 import {
-	listArticles,
-	findByRef,
+	findSegmentsByRef,
 	insertArticle,
 	saveAudio,
 	markReady,
@@ -19,7 +18,7 @@ import {
 	refFor,
 	type ArticleRow
 } from '$lib/server/articles';
-import { extractArticleText } from '$lib/server/extract';
+import { extractArticleText, splitIntoSegments } from '$lib/server/extract';
 import { synthesize } from '$lib/server/piper';
 
 // --- Types ---
@@ -30,39 +29,32 @@ export interface ArticleFeed {
 	title: string;
 }
 
+export interface ArticleSegment {
+	id: number;
+	index: number;
+	status: 'pending' | 'ready' | 'error';
+}
+
 export interface FeedItem {
 	guid: string;
 	title: string;
 	link: string;
 	pubDate?: string;
-	articleId?: number;
-	status?: 'pending' | 'ready' | 'error';
-}
-
-export interface GeneratedArticle {
-	id: number;
-	feedUrl: string;
-	url: string;
-	title: string;
-	status: 'pending' | 'ready' | 'error';
+	segments: ArticleSegment[];
 }
 
 function toFeed(row: ArticleFeedRow): ArticleFeed {
 	return { id: row.id, feedUrl: row.feed_url, title: row.title };
 }
 
-function toGenerated(row: ArticleRow): GeneratedArticle {
-	return { id: row.id, feedUrl: row.feed_url, url: row.url, title: row.title, status: row.status };
+function toSegment(row: ArticleRow): ArticleSegment {
+	return { id: row.id, index: row.segment_index, status: row.status };
 }
 
 // --- Queries ---
 
 export const getSubscribedArticleFeeds = query(async (): Promise<ArticleFeed[]> => {
 	return listFeeds().map(toFeed);
-});
-
-export const getGeneratedArticles = query(async (): Promise<GeneratedArticle[]> => {
-	return listArticles().map(toGenerated);
 });
 
 export const getFeedItems = query(
@@ -72,12 +64,19 @@ export const getFeedItems = query(
 		if (!row) error(404, 'feed not found');
 
 		const parsed = await fetchFeedTitleAndItems(row.feed_url);
-		const items: FeedItem[] = parsed.items.map((item: ParsedFeedItem) => {
-			const existing = findByRef('rss', refFor(item.guid));
-			return { ...item, articleId: existing?.id, status: existing?.status };
-		});
+		const items: FeedItem[] = parsed.items.map((item: ParsedFeedItem) => ({
+			...item,
+			segments: findSegmentsByRef('rss', refFor(item.guid)).map(toSegment)
+		}));
 
 		return { feed: toFeed(row), items };
+	}
+);
+
+export const getArticleProgress = query(
+	'unchecked',
+	async (guid: string): Promise<ArticleSegment[]> => {
+		return findSegmentsByRef('rss', refFor(guid)).map(toSegment);
 	}
 );
 
@@ -96,6 +95,32 @@ export const unsubscribeArticleFeed = command('unchecked', async (id: number) =>
 	deleteFeed(id);
 });
 
+async function generateSegment(row: ArticleRow, text: string): Promise<void> {
+	try {
+		const wav = await synthesize(text);
+		const audioPath = saveAudio(row.id, wav);
+		markReady(row.id, audioPath);
+	} catch {
+		markError(row.id);
+	}
+}
+
+// Refs currently being synthesized in the background, so re-clicking
+// "Listen" while generation is in flight doesn't spawn duplicate work.
+const inFlight = new Set<string>();
+
+async function continueGenerating(ref: string, chunks: string[]): Promise<void> {
+	try {
+		for (const [index, chunk] of chunks.entries()) {
+			const row = findSegmentsByRef('rss', ref).find((s) => s.segment_index === index);
+			if (!row || row.status === 'ready') continue;
+			await generateSegment(row, chunk);
+		}
+	} finally {
+		inFlight.delete(ref);
+	}
+}
+
 export const generateArticle = command(
 	'unchecked',
 	async (item: {
@@ -103,29 +128,41 @@ export const generateArticle = command(
 		guid: string;
 		title: string;
 		link: string;
-	}): Promise<GeneratedArticle> => {
+	}): Promise<ArticleSegment[]> => {
 		const ref = refFor(item.guid);
-		const existing = findByRef('rss', ref);
-		if (existing?.status === 'ready') return toGenerated(existing);
+		let segments = findSegmentsByRef('rss', ref);
+		const allReady = segments.length > 0 && segments.every((s) => s.status === 'ready');
 
-		const row =
-			existing ??
-			insertArticle({
-				source: 'rss',
-				source_ref: ref,
-				feed_url: item.feedUrl,
-				url: item.link,
-				title: item.title
-			});
-
-		try {
-			const { text } = await extractArticleText(item.link);
-			const wav = await synthesize(text);
-			const audioPath = saveAudio(row.id, wav);
-			return toGenerated(markReady(row.id, audioPath));
-		} catch (err) {
-			markError(row.id);
-			throw err;
+		if (allReady || inFlight.has(ref)) {
+			return segments.map(toSegment);
 		}
+
+		inFlight.add(ref);
+
+		const { text } = await extractArticleText(item.link);
+		const chunks = splitIntoSegments(text);
+
+		if (segments.length === 0) {
+			segments = chunks.map((_, index) =>
+				insertArticle({
+					source: 'rss',
+					source_ref: ref,
+					segment_index: index,
+					segment_count: chunks.length,
+					feed_url: item.feedUrl,
+					url: item.link,
+					title: item.title
+				})
+			);
+		}
+
+		const firstPending = segments.find((s) => s.status !== 'ready');
+		if (firstPending) {
+			await generateSegment(firstPending, chunks[firstPending.segment_index]);
+		}
+
+		continueGenerating(ref, chunks);
+
+		return findSegmentsByRef('rss', ref).map(toSegment);
 	}
 );

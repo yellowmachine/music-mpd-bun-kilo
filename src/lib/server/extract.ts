@@ -40,3 +40,24 @@ export async function extractArticleText(url: string): Promise<{ title: string; 
 
 	return { title: article.title ?? url, text };
 }
+
+// Splits already-extracted plain text into TTS-sized segments, grouping
+// consecutive paragraphs greedily up to maxChars. Never splits a single
+// paragraph across two segments, even if it alone exceeds maxChars.
+export function splitIntoSegments(text: string, maxChars = 1500): string[] {
+	const paragraphs = text.split(/\n\n+/).filter((p) => p.trim().length > 0);
+	const segments: string[] = [];
+	let current = '';
+
+	for (const paragraph of paragraphs) {
+		if (current && current.length + 2 + paragraph.length > maxChars) {
+			segments.push(current);
+			current = paragraph;
+		} else {
+			current = current ? `${current}\n\n${paragraph}` : paragraph;
+		}
+	}
+	if (current) segments.push(current);
+
+	return segments;
+}
