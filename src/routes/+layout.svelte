@@ -176,78 +176,13 @@
 					<MagnifyingGlassIcon size={14} weight="bold" />
 					<span class="hidden sm:inline">search</span>
 				</a>
-				<!-- Desktop only: playlists, radio, snap, admin -->
-				<a
-					href="/playlists"
-					aria-label="playlists"
-					class="hidden items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors sm:flex
-					{$page.url.pathname.startsWith('/playlists')
-						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-						: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
-				>
-					<ListPlusIcon size={14} weight="bold" />
-					playlists
-				</a>
-				<a
-					href="/radio"
-					aria-label="radio"
-					class="hidden items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors sm:flex
-					{$page.url.pathname.startsWith('/radio')
-						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-						: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
-				>
-					<RadioIcon size={14} weight="bold" />
-					radio
-				</a>
-				<a
-					href="/podcasts"
-					aria-label="podcasts"
-					class="hidden items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors sm:flex
-					{$page.url.pathname.startsWith('/podcasts')
-						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-						: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
-				>
-					<RssIcon size={14} weight="bold" />
-					podcasts
-				</a>
-				<a
-					href="/articles"
-					aria-label="articles"
-					class="hidden items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors sm:flex
-					{$page.url.pathname.startsWith('/articles')
-						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-						: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
-				>
-					<ArticleIcon size={14} weight="bold" />
-					articles
-				</a>
-				<a
-					href="/snap"
-					aria-label="snapcast"
-					class="hidden items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors sm:flex
-					{$page.url.pathname === '/snap'
-						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-						: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
-				>
-					<SpeakerHighIcon size={14} weight="bold" />
-					snap
-				</a>
-				<a
-					href="/admin"
-					aria-label="admin"
-					class="hidden items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors sm:flex
-					{$page.url.pathname === '/admin'
-						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-						: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
-				>
-					<GearIcon size={14} weight="bold" />
-					admin
-				</a>
-
-				<!-- Mobile only: overflow menu button -->
+				<!-- Overflow menu: playlists, radio, podcasts, articles, snap, admin.
+				     Always collapsed here (not just on mobile) — the app shell is capped
+				     at max-w-3xl regardless of screen size, so there's never enough room
+				     to show every section as its own tab, laptop included. -->
 				<button
 					onclick={() => (overflowOpen = !overflowOpen)}
-					class="flex items-center border-l border-[var(--color-border)] px-3 py-2.5 transition-colors sm:hidden
+					class="flex items-center border-l border-[var(--color-border)] px-3 py-2.5 transition-colors
 					{overflowOpen ||
 					$page.url.pathname.startsWith('/playlists') ||
 					$page.url.pathname.startsWith('/radio') ||
@@ -268,10 +203,10 @@
 				{mpdStore.connected ? '●' : '○'}
 			</span>
 
-			<!-- Mobile overflow dropdown -->
+			<!-- Overflow dropdown -->
 			{#if overflowOpen}
 				<div
-					class="absolute top-full right-0 z-50 border border-[var(--color-border)] bg-[var(--color-bg)] sm:hidden"
+					class="absolute top-full right-0 z-50 border border-[var(--color-border)] bg-[var(--color-bg)]"
 					style="min-width: 140px"
 				>
 					<a
@@ -341,15 +276,15 @@
 		<!-- Main content -->
 		<main class="min-h-0 flex-1 overflow-auto">
 			{@render children()}
-
-			<footer
-				class="border-t border-[var(--color-border)]/30 px-4 py-3 text-center text-[10px] tracking-widest text-[var(--color-muted)] uppercase"
-			>
-				built with the help of claude
-			</footer>
 		</main>
 
 		<!-- Player bar -->
 		<Player />
+
+		<footer
+			class="border-t border-[var(--color-border)]/30 px-4 py-2 text-center text-[10px] tracking-widest text-[var(--color-muted)] uppercase"
+		>
+			built with the help of claude
+		</footer>
 	</div>
 </div>
