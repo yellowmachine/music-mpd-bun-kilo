@@ -56,6 +56,8 @@ services:
       SNAP_PORT: '1780'
       ORIGIN: http://192.168.68.50:3000
       PORT: '3000'
+    volumes:
+      - ./podcasts-data:/app/data
     depends_on:
       mpd:
         condition: service_healthy

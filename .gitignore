@@ -24,6 +24,8 @@ vite.config.ts.timestamp-*
 
 /music
 /playlists
+/podcasts-data
+/data
 
 # MPD runtime state
 mpd-db/*
