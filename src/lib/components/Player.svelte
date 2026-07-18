@@ -10,9 +10,11 @@
 		SpeakerNoneIcon,
 		ShuffleIcon,
 		RepeatIcon,
-		RepeatOnceIcon
+		RepeatOnceIcon,
+		DevicesIcon
 	} from 'phosphor-svelte';
 	import { mpdStore } from '$lib/mpd.svelte';
+	import SnapVolumePopup from '$lib/components/SnapVolumePopup.svelte';
 	import {
 		play,
 		pause,
@@ -74,6 +76,7 @@
 	}
 
 	let prevVolume = $state(100);
+	let snapPopupOpen = $state(false);
 
 	async function toggleMute() {
 		if (mpdStore.volume === 0) {
@@ -230,9 +233,9 @@
 		</button>
 		<button
 			onclick={() => stepVolume(-5)}
-			class="text-[var(--color-muted)] hover:text-[var(--color-fg)] leading-none"
-			aria-label="decrease volume"
-		>−</button>
+			class="leading-none text-[var(--color-muted)] hover:text-[var(--color-fg)]"
+			aria-label="decrease volume">−</button
+		>
 		<input
 			type="range"
 			min="0"
@@ -244,9 +247,21 @@
 		/>
 		<button
 			onclick={() => stepVolume(5)}
-			class="text-[var(--color-muted)] hover:text-[var(--color-fg)] leading-none"
-			aria-label="increase volume"
-		>+</button>
+			class="leading-none text-[var(--color-muted)] hover:text-[var(--color-fg)]"
+			aria-label="increase volume">+</button
+		>
 		<span class="w-6 text-right text-[10px] text-[var(--color-muted)]">{mpdStore.volume}</span>
+		<button
+			onclick={() => (snapPopupOpen = true)}
+			class="shrink-0 text-[var(--color-muted)] hover:text-[var(--color-fg)]"
+			aria-label="snap client volumes"
+			title="Snap client volumes"
+		>
+			<DevicesIcon size={15} weight="bold" />
+		</button>
 	</div>
 </div>
+
+{#if snapPopupOpen}
+	<SnapVolumePopup onclose={() => (snapPopupOpen = false)} />
+{/if}
