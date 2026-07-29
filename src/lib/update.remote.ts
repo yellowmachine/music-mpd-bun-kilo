@@ -15,6 +15,7 @@ export const triggerUpdate = command(async () => {
 	let res: Response;
 	try {
 		res = await fetch(`${env.WATCHTOWER_URL}/v1/update`, {
+			method: 'POST',
 			headers: { Authorization: `Bearer ${env.WATCHTOWER_TOKEN}` }
 		});
 	} catch (e) {
