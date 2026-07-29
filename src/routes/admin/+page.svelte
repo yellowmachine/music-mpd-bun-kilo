@@ -43,8 +43,20 @@
 			restarting = true;
 			waitForRestart();
 		} catch (e) {
-			applyError = errorMessage(e);
-			applying = false;
+			if (isHttpError(e)) {
+				// A clean error response from our own server — Watchtower is
+				// unreachable/misconfigured, or rejected the request outright.
+				applyError = e.body.message;
+				applying = false;
+			} else {
+				// Watchtower runs the update synchronously as part of handling
+				// /v1/update, so it kills this very container mid-request — the
+				// browser sees a raw network failure (not an HttpError) rather
+				// than a response. That failure mode means it's already working.
+				applying = false;
+				restarting = true;
+				waitForRestart();
+			}
 		}
 	}
 
