@@ -47,7 +47,11 @@ async function checkForUpdate() {
 	}
 }
 
-export function getUpdateStatus(): UpdateStatus {
+const MIN_RECHECK_INTERVAL_MS = 60 * 1000; // avoid hammering GitHub if /admin is loaded repeatedly in quick succession
+
+export async function getUpdateStatus(): Promise<UpdateStatus> {
+	const stale = !status.checkedAt || Date.now() - status.checkedAt > MIN_RECHECK_INTERVAL_MS;
+	if (stale) await checkForUpdate();
 	return status;
 }
 

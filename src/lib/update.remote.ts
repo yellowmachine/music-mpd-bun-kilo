@@ -4,7 +4,7 @@ import { env } from '$env/dynamic/private';
 import { getUpdateStatus } from '$lib/server/update-check';
 
 export const getUpdateInfo = query(async () => {
-	return getUpdateStatus();
+	return await getUpdateStatus();
 });
 
 export const triggerUpdate = command(async () => {
