@@ -6,8 +6,17 @@
 		PowerIcon,
 		WarningIcon
 	} from 'phosphor-svelte';
+	import { isHttpError } from '@sveltejs/kit';
 	import { mpdUpdate, systemReboot, systemShutdown, getSearchStatus } from '$lib/mpd.remote';
 	import { getUpdateInfo, triggerUpdate } from '$lib/update.remote';
+
+	// Remote `command()` failures surface as HttpError (not Error), so a plain
+	// `instanceof Error` check never matches — this reads the real message either way.
+	function errorMessage(e: unknown): string {
+		if (isHttpError(e)) return e.body.message;
+		if (e instanceof Error) return e.message;
+		return 'unknown error';
+	}
 
 	// MPD update state
 	let updating = $state(false);
@@ -34,7 +43,7 @@
 			restarting = true;
 			waitForRestart();
 		} catch (e) {
-			applyError = e instanceof Error ? e.message : 'unknown error';
+			applyError = errorMessage(e);
 			applying = false;
 		}
 	}
@@ -65,7 +74,7 @@
 			updateDone = true;
 			setTimeout(() => (updateDone = false), 4000);
 		} catch (e) {
-			updateError = e instanceof Error ? e.message : 'unknown error';
+			updateError = errorMessage(e);
 		} finally {
 			updating = false;
 		}
