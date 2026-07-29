@@ -86,7 +86,10 @@ services:
   # page via its HTTP API. Does NOT poll or auto-update on its own; it only
   # reacts to the authenticated request svelte-mpd sends.
   watchtower:
-    image: containrrr/watchtower
+    # containrrr/watchtower is unmaintained and ships a Docker client too old
+    # for recent Docker daemons ("client version 1.25 is too old"); use the
+    # maintained fork instead.
+    image: nickfedor/watchtower
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:

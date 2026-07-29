@@ -168,7 +168,7 @@ The `/admin` page lets you reboot or shut down the Pi directly from the web UI. 
 
 If you deploy with `docker-compose.prod.yml` (which pulls the pre-built `ghcr.io/yellowmachine/music-mpd-bun-kilo` image instead of building locally), the `/admin` page checks GitHub for new commits on `main` every few hours and shows a banner when the running image is out of date.
 
-Applying an update is done via a [Watchtower](https://containrrr.dev/watchtower/) sidecar that only reacts to an authenticated request from the app — it does **not** poll or auto-update on its own. To enable the **Update** button:
+Applying an update is done via a [Watchtower](https://watchtower.nickfedor.com/) sidecar that only reacts to an authenticated request from the app — it does **not** poll or auto-update on its own. To enable the **Update** button:
 
 1. Generate a random token and add it to `.env`:
    ```env
