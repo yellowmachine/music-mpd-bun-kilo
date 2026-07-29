@@ -1,6 +1,13 @@
 <script lang="ts">
-	import { ArrowsClockwiseIcon, DatabaseIcon, PowerIcon, WarningIcon } from 'phosphor-svelte';
+	import {
+		ArrowsClockwiseIcon,
+		DatabaseIcon,
+		DownloadSimpleIcon,
+		PowerIcon,
+		WarningIcon
+	} from 'phosphor-svelte';
 	import { mpdUpdate, systemReboot, systemShutdown, getSearchStatus } from '$lib/mpd.remote';
+	import { getUpdateInfo, triggerUpdate } from '$lib/update.remote';
 
 	// MPD update state
 	let updating = $state(false);
@@ -9,6 +16,25 @@
 
 	// Search index status (reactive query)
 	const indexStatus = getSearchStatus();
+
+	// App version / update status
+	const updateInfo = getUpdateInfo();
+	let confirmApply = $state(false);
+	let applying = $state(false);
+	let applyError = $state<string | null>(null);
+
+	async function handleApplyUpdate() {
+		if (applying) return;
+		applying = true;
+		applyError = null;
+		try {
+			await triggerUpdate();
+			// on success the app container is about to restart — stay in "applying" state
+		} catch (e) {
+			applyError = e instanceof Error ? e.message : 'unknown error';
+			applying = false;
+		}
+	}
 
 	async function handleMpdUpdate() {
 		if (updating) return;
@@ -104,6 +130,91 @@
 			{#if updateError}
 				<p class="text-[10px] text-[var(--color-muted)]">error: {updateError}</p>
 			{/if}
+		</div>
+	</section>
+
+	<!-- App version -->
+	<section class="border border-[var(--color-border)]">
+		<div class="flex items-center gap-2 border-b border-[var(--color-border)] px-4 py-2">
+			<DownloadSimpleIcon size={13} weight="bold" />
+			<span class="text-[10px] font-bold tracking-widest uppercase">App version</span>
+		</div>
+
+		<div class="space-y-3 px-4 py-4">
+			{#await updateInfo}
+				<p class="text-[10px] text-[var(--color-muted)]">checking version...</p>
+			{:then info}
+				<div class="flex items-center justify-between text-[10px]">
+					<span class="text-[var(--color-muted)]">running</span>
+					<span class="tabular-nums">{info.current ? info.current.slice(0, 7) : 'unknown'}</span>
+				</div>
+
+				{#if info.error}
+					<p class="text-[10px] text-[var(--color-muted)]">
+						could not check for updates: {info.error}
+					</p>
+				{:else if !info.current}
+					<p class="text-[10px] text-[var(--color-muted)]">
+						image was not built with GIT_SHA — update checks disabled
+					</p>
+				{:else if info.latest}
+					<div class="flex items-center justify-between text-[10px]">
+						<span class="text-[var(--color-muted)]">latest (main)</span>
+						<span class="tabular-nums">{info.latest.slice(0, 7)}</span>
+					</div>
+				{/if}
+
+				{#if info.updateAvailable}
+					<div class="flex items-center justify-between pt-1">
+						<div class="space-y-0.5">
+							<p class="text-xs font-bold">Update available</p>
+							<p class="text-[10px] text-[var(--color-muted)]">
+								Pulls the new image and restarts the app (playback is unaffected)
+							</p>
+						</div>
+						{#if confirmApply}
+							<div class="flex shrink-0 items-center gap-2">
+								<span class="text-[10px] text-[var(--color-muted)]">sure?</span>
+								<button
+									onclick={handleApplyUpdate}
+									disabled={applying}
+									class="border border-[var(--color-border)] bg-[var(--color-fg)] px-3 py-1.5
+										text-[10px] tracking-wider text-[var(--color-accent-fg)] uppercase
+										disabled:opacity-40"
+								>
+									{applying ? 'updating...' : 'yes, update'}
+								</button>
+								{#if !applying}
+									<button
+										onclick={() => (confirmApply = false)}
+										class="text-[10px] text-[var(--color-muted)] hover:text-[var(--color-fg)]"
+									>
+										cancel
+									</button>
+								{/if}
+							</div>
+						{:else}
+							<button
+								onclick={() => (confirmApply = true)}
+								class="flex shrink-0 items-center gap-1.5 border border-[var(--color-border)] px-3 py-1.5
+									text-[10px] tracking-wider uppercase transition-colors
+									hover:bg-[var(--color-fg)] hover:text-[var(--color-accent-fg)]"
+							>
+								<DownloadSimpleIcon size={11} weight="bold" />
+								update
+							</button>
+						{/if}
+					</div>
+				{:else if info.current && !info.error}
+					<p class="text-[10px] text-[var(--color-muted)]">up to date</p>
+				{/if}
+
+				{#if applyError}
+					<p class="text-[10px] text-[var(--color-muted)]">error: {applyError}</p>
+				{/if}
+			{:catch}
+				<p class="text-[10px] text-[var(--color-muted)]">could not fetch version info</p>
+			{/await}
 		</div>
 	</section>
 

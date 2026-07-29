@@ -71,3 +71,4 @@ jobs:
             PIPER_HOST=piper
             PIPER_PORT=5000
             PORT=3000
+            GIT_SHA=${{ github.sha }}

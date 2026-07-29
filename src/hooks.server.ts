@@ -1,10 +1,12 @@
 import { startIdle, buildIndex } from '$lib/server/mpd';
 import { connectWebSocket } from '$lib/server/snap';
+import { startPeriodicCheck } from '$lib/server/update-check';
 import type { Handle } from '@sveltejs/kit';
 
 export async function init() {
 	startIdle().then(() => buildIndex());
 	connectWebSocket();
+	startPeriodicCheck();
 }
 
 export const handle: Handle = async ({ event, resolve }) => {

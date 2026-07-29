@@ -164,6 +164,21 @@ The `restart: unless-stopped` policy (set in `docker-compose.yml`) ensures the s
 
 The `/admin` page lets you reboot or shut down the Pi directly from the web UI. This requires the `svelte-mpd` container to run with `privileged: true` (already configured).
 
+### Update notifications
+
+If you deploy with `docker-compose.prod.yml` (which pulls the pre-built `ghcr.io/yellowmachine/music-mpd-bun-kilo` image instead of building locally), the `/admin` page checks GitHub for new commits on `main` every few hours and shows a banner when the running image is out of date.
+
+Applying an update is done via a [Watchtower](https://containrrr.dev/watchtower/) sidecar that only reacts to an authenticated request from the app — it does **not** poll or auto-update on its own. To enable the **Update** button:
+
+1. Generate a random token and add it to `.env`:
+   ```env
+   WATCHTOWER_TOKEN=<a long random string, e.g. `openssl rand -hex 32`>
+   ```
+2. Start (or restart) the stack with `docker-compose.prod.yml`. This brings up a `watchtower` container with access to the Docker socket, scoped to only the `svelte-mpd` container via the `com.centurylinklabs.watchtower.enable` label.
+3. When a new version is available, click **update** on `/admin`. This pulls the new image and recreates `svelte-mpd` — playback continues uninterrupted since `mpd`/`snapserver` are separate containers; only the web UI briefly restarts.
+
+If `WATCHTOWER_TOKEN` isn't set, the version banner still works but the update button will show an error when clicked.
+
 ---
 
 ## Pages
@@ -175,7 +190,7 @@ The `/admin` page lets you reboot or shut down the Pi directly from the web UI. 
 | `/library`           | Music library filesystem browser             |
 | `/library/[...path]` | Nested directory navigation                  |
 | `/snap`              | Snapserver multi-room client volume control  |
-| `/admin`             | MPD database update + system reboot/shutdown |
+| `/admin`             | MPD database update, app version/update, system reboot/shutdown |
 
 ### Player bar (persistent, all pages)
 

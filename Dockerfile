@@ -45,6 +45,10 @@ COPY --from=builder /app/build ./build
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 
+# Commit this image was built from — used by the update-check to detect new releases
+ARG GIT_SHA=unknown
+ENV GIT_SHA=$GIT_SHA
+
 ENV NODE_ENV=production
 
 EXPOSE 3000
