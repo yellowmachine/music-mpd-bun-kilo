@@ -21,6 +21,7 @@
 	const updateInfo = getUpdateInfo();
 	let confirmApply = $state(false);
 	let applying = $state(false);
+	let restarting = $state(false);
 	let applyError = $state<string | null>(null);
 
 	async function handleApplyUpdate() {
@@ -29,11 +30,29 @@
 		applyError = null;
 		try {
 			await triggerUpdate();
-			// on success the app container is about to restart — stay in "applying" state
+			applying = false;
+			restarting = true;
+			waitForRestart();
 		} catch (e) {
 			applyError = e instanceof Error ? e.message : 'unknown error';
 			applying = false;
 		}
+	}
+
+	// Polls the app until it comes back up after Watchtower recreates the
+	// container, then reloads so the page reflects the new version.
+	async function waitForRestart() {
+		await new Promise((r) => setTimeout(r, 3000)); // give the old container time to actually go down
+		while (true) {
+			try {
+				const res = await fetch('/', { method: 'HEAD', cache: 'no-store' });
+				if (res.ok) break;
+			} catch {
+				// expected while the container is down — keep polling
+			}
+			await new Promise((r) => setTimeout(r, 2000));
+		}
+		location.reload();
 	}
 
 	async function handleMpdUpdate() {
@@ -164,7 +183,15 @@
 					</div>
 				{/if}
 
-				{#if info.updateAvailable}
+				{#if restarting}
+					<div class="flex items-center gap-2 pt-1">
+						<ArrowsClockwiseIcon size={11} weight="bold" class="animate-spin" />
+						<p class="text-[10px] text-[var(--color-muted)]">
+							restarting — waiting for the app to come back online, this page will reload
+							automatically...
+						</p>
+					</div>
+				{:else if info.updateAvailable}
 					<div class="flex items-center justify-between pt-1">
 						<div class="space-y-0.5">
 							<p class="text-xs font-bold">Update available</p>
