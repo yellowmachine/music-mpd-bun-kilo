@@ -29,6 +29,10 @@
 		browser ? localStorage.getItem('assistantPlayAudio') === 'true' : false
 	);
 
+	// getUserMedia needs a secure context (https, or localhost) — on a plain
+	// http://<lan-ip> origin the browser refuses it outright.
+	const micSupported = browser && window.isSecureContext && !!navigator.mediaDevices?.getUserMedia;
+
 	function toggleReplyAudio() {
 		playReplyAudio = !playReplyAudio;
 		localStorage.setItem('assistantPlayAudio', String(playReplyAudio));
@@ -142,8 +146,13 @@
 	<div bind:this={listEl} class="flex-1 space-y-3 overflow-y-auto px-4 py-4">
 		{#if messages.length === 0}
 			<p class="text-center text-xs text-[var(--color-muted)]">
-				— prueba el asistente por texto o voz, sin Raspberry —
+				— prueba el asistente por texto{micSupported ? ' o voz' : ''} —
 			</p>
+			{#if !micSupported}
+				<p class="text-center text-xs text-[var(--color-muted)]">
+					(el micrófono del navegador requiere https o localhost)
+				</p>
+			{/if}
 		{/if}
 
 		{#each messages as msg}
@@ -199,11 +208,12 @@
 		<button
 			type="button"
 			onclick={toggleRecording}
-			disabled={sending && !recording}
+			disabled={!micSupported || (sending && !recording)}
 			class="flex h-9 w-9 shrink-0 items-center justify-center border border-[var(--color-border)] transition-colors disabled:opacity-40 {recording
 				? 'bg-red-500 text-white'
 				: ''}"
 			aria-label={recording ? 'detener grabación' : 'grabar mensaje de voz'}
+			title={micSupported ? undefined : 'el micrófono del navegador requiere https o localhost'}
 		>
 			{#if recording}
 				<StopIcon size={16} weight="bold" />

@@ -1,10 +1,10 @@
 import { error } from '@sveltejs/kit';
-import { ASSISTANT_TOKEN } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { handleVoiceMessage } from '$lib/server/assistant-voice';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ request }) => {
-	if (!ASSISTANT_TOKEN || request.headers.get('x-assistant-token') !== ASSISTANT_TOKEN) {
+	if (!env.ASSISTANT_TOKEN || request.headers.get('x-assistant-token') !== env.ASSISTANT_TOKEN) {
 		error(401, 'unauthorized');
 	}
 

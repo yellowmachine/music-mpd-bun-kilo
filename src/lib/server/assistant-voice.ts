@@ -1,10 +1,10 @@
 import { error } from '@sveltejs/kit';
-import { WHISPER_HOST, WHISPER_PORT } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { runAssistant } from '$lib/server/assistant';
 import { synthesize } from '$lib/server/piper';
 
-const host = WHISPER_HOST || 'localhost';
-const port = WHISPER_PORT || '5001';
+const host = env.WHISPER_HOST || 'localhost';
+const port = env.WHISPER_PORT || '5001';
 
 export interface VoiceResult {
 	transcript: string;

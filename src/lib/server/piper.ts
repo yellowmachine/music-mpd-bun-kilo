@@ -1,8 +1,8 @@
 import { error } from '@sveltejs/kit';
-import { PIPER_HOST, PIPER_PORT as PIPER_PORT_STR } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
-const host = PIPER_HOST || 'localhost';
-const port = PIPER_PORT_STR || '5000';
+const host = env.PIPER_HOST || 'localhost';
+const port = env.PIPER_PORT || '5000';
 
 export async function synthesize(text: string): Promise<Buffer> {
 	const res = await fetch(`http://${host}:${port}/synthesize`, {

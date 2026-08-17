@@ -1,9 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { ANTHROPIC_API_KEY } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { getClient, search as searchLibrary } from '$lib/server/mpd';
 import { getClients, setClientVolume, setClientMute } from '$lib/server/snap';
 
-const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
 const MODEL = 'claude-haiku-4-5-20251001';
 
 const tools: Anthropic.Tool[] = [

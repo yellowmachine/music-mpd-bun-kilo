@@ -1,12 +1,12 @@
 import mpdApi from 'mpd-api';
 import type { MPDApi } from 'mpd-api';
 import MiniSearch from 'minisearch';
-import { MPD_HOST, MPD_PORT as MPD_PORT_STR } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import type { MpdStatus, MpdSong, MpdQueueItem } from '$lib/mpd.types';
 export type { MpdStatus, MpdSong, MpdQueueItem } from '$lib/mpd.types';
 
-const host = MPD_HOST ?? 'localhost';
-const port = parseInt(MPD_PORT_STR ?? '6600', 10);
+const host = env.MPD_HOST ?? 'localhost';
+const port = parseInt(env.MPD_PORT ?? '6600', 10);
 
 // --- Types ---
 
