@@ -1,0 +1,17 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+		portaudio19-dev \
+		libasound2-dev \
+		gcc \
+	&& rm -rf /var/lib/apt/lists/*
+
+COPY voice-client/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt \
+	&& python -c "from openwakeword.utils import download_models; download_models()"
+
+COPY voice-client/voice_client.py .
+
+CMD ["python", "voice_client.py"]

@@ -16,7 +16,8 @@
 		ListPlusIcon,
 		RadioIcon,
 		RssIcon,
-		ArticleIcon
+		ArticleIcon,
+		RobotIcon
 	} from 'phosphor-svelte';
 
 	let { children } = $props();
@@ -199,6 +200,7 @@
 					$page.url.pathname.startsWith('/podcasts') ||
 					$page.url.pathname.startsWith('/articles') ||
 					$page.url.pathname === '/snap' ||
+					$page.url.pathname === '/assistant' ||
 					$page.url.pathname === '/admin'
 						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
 						: 'text-[var(--color-muted)]'}"
@@ -258,6 +260,16 @@
 					>
 						<SpeakerHighIcon size={13} weight="bold" />
 						snap
+					</a>
+					<a
+						href="/assistant"
+						class="flex items-center gap-2 border-b border-[var(--color-border)]/30 px-4 py-3 text-[10px] tracking-widest uppercase transition-colors
+						{$page.url.pathname === '/assistant'
+							? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+							: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+					>
+						<RobotIcon size={13} weight="bold" />
+						asistente
 					</a>
 					<a
 						href="/admin"
