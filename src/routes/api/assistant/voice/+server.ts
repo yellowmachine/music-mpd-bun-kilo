@@ -9,7 +9,10 @@ export const POST: RequestHandler = async ({ request }) => {
 	}
 
 	const audio = Buffer.from(await request.arrayBuffer());
-	const { transcript, reply, wav } = await handleVoiceMessage(audio);
+	const { transcript, reply, wav } = await handleVoiceMessage(
+		audio,
+		request.headers.get('content-type')
+	);
 
 	return new Response(Uint8Array.from(wav), {
 		headers: {
