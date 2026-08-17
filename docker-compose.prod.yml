@@ -96,6 +96,25 @@ services:
     ports:
       - '3000:3000'
 
+  # Reverse proxy terminating HTTPS at https://musicpi.local with a
+  # locally-issued cert (Caddy's own CA, persisted in the caddy-data volume).
+  # Needed for browser APIs that require a secure context, like the
+  # assistant's mic recording — plain http://<lan-ip>:3000 doesn't qualify.
+  # Trust the CA once per device: copy /data/caddy/pki/authorities/local/root.crt
+  # out of the caddy-data volume and install it as a trusted root.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - svelte-mpd
+    ports:
+      - '80:80'
+      - '443:443'
+
   # Sidecar that applies updates on demand — triggered from the app's /admin
   # page via its HTTP API. Does NOT poll or auto-update on its own; it only
   # reacts to the authenticated request svelte-mpd sends.
@@ -115,3 +134,5 @@ services:
 
 volumes:
   shared-fifo:
+  caddy-data:
+  caddy-config:

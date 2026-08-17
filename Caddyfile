@@ -1,0 +1,7 @@
+{
+	local_certs
+}
+
+https://musicpi.local {
+	reverse_proxy svelte-mpd:3000
+}
