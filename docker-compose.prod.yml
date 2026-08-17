@@ -72,7 +72,7 @@ services:
       SNAP_PORT: '1780'
       PIPER_HOST: piper
       PIPER_PORT: '5000'
-      ORIGIN: http://192.168.68.50:3000
+      ORIGIN: ${ORIGIN}
       PORT: '3000'
       WATCHTOWER_URL: http://watchtower:8080
       WATCHTOWER_TOKEN: ${WATCHTOWER_TOKEN}
