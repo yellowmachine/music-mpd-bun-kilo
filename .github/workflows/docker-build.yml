@@ -1,4 +1,4 @@
-name: Build and push svelte-mpd image
+name: Build and push images
 
 on:
   push:
@@ -6,6 +6,11 @@ on:
     paths:
       - '.github/workflows/docker-build.yml'
       - 'Dockerfile'
+      - 'Dockerfile.mpd'
+      - 'Dockerfile.snapserver'
+      - 'Dockerfile.snapclient'
+      - 'Dockerfile.piper'
+      - 'Dockerfile.whisper'
       - 'src/**'
       - 'static/**'
       - 'package.json'
@@ -13,6 +18,9 @@ on:
       - 'svelte.config.js'
       - 'vite.config.ts'
       - 'tsconfig.json'
+      - 'mpd.conf'
+      - 'entrypoint.sh'
+      - 'whisper_server.py'
   workflow_dispatch:
 
 env:
@@ -61,8 +69,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=svelte-mpd
+          cache-to: type=gha,mode=max,scope=svelte-mpd
           build-args: |
             MPD_HOST=mpd
             MPD_PORT=6600
@@ -72,3 +80,60 @@ jobs:
             PIPER_PORT=5000
             PORT=3000
             GIT_SHA=${{ github.sha }}
+
+  build-and-push-sidecars:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - name: mpd
+            dockerfile: Dockerfile.mpd
+          - name: snapserver
+            dockerfile: Dockerfile.snapserver
+          - name: snapclient
+            dockerfile: Dockerfile.snapclient
+          - name: piper
+            dockerfile: Dockerfile.piper
+          - name: whisper
+            dockerfile: Dockerfile.whisper
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.name }}
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
