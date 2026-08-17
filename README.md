@@ -67,6 +67,12 @@ ORIGIN=http://192.168.0.x:3000
 
 # Web app port
 PORT=3000
+
+# AI assistant (optional — see "AI assistant" section below)
+ANTHROPIC_API_KEY=sk-ant-...
+ASSISTANT_TOKEN=<a long random string, e.g. `openssl rand -hex 32`>
+WHISPER_HOST=whisper
+WHISPER_PORT=5001
 ```
 
 > **`ORIGIN` is required.** SvelteKit uses it to validate `Host` headers for remote function calls. Set it to the actual LAN address of your server.
@@ -181,6 +187,18 @@ If `WATCHTOWER_TOKEN` isn't set, the version banner still works but the update b
 
 ---
 
+## AI assistant
+
+An optional tool-calling assistant (Claude, via `@anthropic-ai/sdk`) that can control playback, search the library and adjust Snapserver rooms from natural language.
+
+- `src/lib/server/assistant.ts` — the agent loop and tool implementations (wraps the same functions used by `mpd.remote.ts`/`snap.ts`, no separate MPD logic).
+- `src/lib/assistant.remote.ts` — `sendMessage(text)` remote command, for a text/voice chat UI in the web app.
+- `POST /api/assistant/voice` — binary endpoint (raw WAV body) for an external voice device (e.g. a wake-word client on a mic array): sends audio to a Whisper STT sidecar, runs the agent, synthesizes the reply with Piper, and returns WAV audio. Requires an `X-Assistant-Token` header matching `ASSISTANT_TOKEN`.
+
+Requires `ANTHROPIC_API_KEY`, `ASSISTANT_TOKEN`, and a Whisper STT sidecar reachable at `WHISPER_HOST`/`WHISPER_PORT` (not included in this repo yet — see `Dockerfile.piper` for the pattern to follow with `faster-whisper`).
+
+---
+
 ## Pages
 
 | Route                | Description                                  |
@@ -274,6 +292,8 @@ SNAP_PORT=1780
 ORIGIN=http://localhost:3000
 PORT=3000
 ```
+
+Piper and (if you enable the AI assistant) Whisper are read from `$env/static/private`, so `PIPER_HOST`/`PIPER_PORT`/`WHISPER_HOST`/`WHISPER_PORT` must also be present in `.env` even for local dev (point them at `localhost` and the sidecars' ports, or run those services yourself).
 
 ### Scripts
 

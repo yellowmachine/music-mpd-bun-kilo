@@ -1,0 +1,15 @@
+# Corre en la Raspberry Pi dedicada al micro (no en la que aloja el backend).
+# Uso: copiar este directorio + Dockerfile.voice-client a esa Pi (o clonar
+# el repo entero), rellenar voice-assistant.env y levantar con:
+#   docker compose -f voice-client/docker-compose.yml up --build -d
+
+services:
+  voice-client:
+    build:
+      context: ..
+      dockerfile: Dockerfile.voice-client
+    devices:
+      - /dev/snd:/dev/snd
+    env_file:
+      - ./voice-assistant.env
+    restart: unless-stopped
