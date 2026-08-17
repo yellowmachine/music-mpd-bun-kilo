@@ -1,9 +1,9 @@
-import { SNAP_HOST, SNAP_PORT } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import type { SnapClient, SnapVolume } from '$lib/mpd.types';
 export type { SnapClient, SnapVolume };
 
-const host = SNAP_HOST ?? 'localhost';
-const port = parseInt(SNAP_PORT ?? '1780', 10);
+const host = env.SNAP_HOST ?? 'localhost';
+const port = parseInt(env.SNAP_PORT ?? '1780', 10);
 const url = `ws://${host}:${port}/jsonrpc`;
 
 // --- JSON-RPC helpers ---
