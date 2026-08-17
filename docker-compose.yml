@@ -71,6 +71,7 @@ services:
       WHISPER_HOST: whisper
       WHISPER_PORT: '5001'
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
       ASSISTANT_TOKEN: ${ASSISTANT_TOKEN}
     volumes:
       - ./podcasts-data:/app/data

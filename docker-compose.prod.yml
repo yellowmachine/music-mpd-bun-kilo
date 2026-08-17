@@ -1,8 +1,6 @@
 services:
   mpd:
-    build:
-      context: .
-      dockerfile: Dockerfile.mpd
+    image: ghcr.io/yellowmachine/music-mpd-bun-kilo-mpd:latest
     depends_on:
       - snapserver
     volumes:
@@ -21,9 +19,7 @@ services:
       start_period: 10s
 
   snapserver:
-    build:
-      context: .
-      dockerfile: Dockerfile.snapserver
+    image: ghcr.io/yellowmachine/music-mpd-bun-kilo-snapserver:latest
     volumes:
       - ./snapserver.conf:/etc/snapserver.conf
       - shared-fifo:/shared
@@ -34,9 +30,7 @@ services:
       - '1780:1780'
 
   snapclient:
-    build:
-      context: .
-      dockerfile: Dockerfile.snapclient
+    image: ghcr.io/yellowmachine/music-mpd-bun-kilo-snapclient:latest
     command: snapclient -h snapserver --hostID arriba -s Headphones
     depends_on:
       - snapserver
@@ -47,17 +41,11 @@ services:
       - ./asound.conf:/etc/asound.conf:ro
 
   piper:
-    build:
-      context: .
-      dockerfile: Dockerfile.piper
+    image: ghcr.io/yellowmachine/music-mpd-bun-kilo-piper:latest
     restart: unless-stopped
 
   whisper:
-    build:
-      context: .
-      dockerfile: Dockerfile.whisper
-      args:
-        WHISPER_MODEL: small
+    image: ghcr.io/yellowmachine/music-mpd-bun-kilo-whisper:latest
     restart: unless-stopped
 
   svelte-mpd:
@@ -79,6 +67,7 @@ services:
       WHISPER_HOST: whisper
       WHISPER_PORT: '5001'
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
       ASSISTANT_TOKEN: ${ASSISTANT_TOKEN}
     volumes:
       - ./podcasts-data:/app/data

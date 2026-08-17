@@ -73,6 +73,11 @@ ANTHROPIC_API_KEY=sk-ant-...
 ASSISTANT_TOKEN=<a long random string, e.g. `openssl rand -hex 32`>
 WHISPER_HOST=whisper
 WHISPER_PORT=5001
+
+# Optional: use OpenAI's cloud STT instead of the local Whisper sidecar.
+# Much faster on weak hardware (e.g. Raspberry Pi) since transcription no
+# longer runs on-device. If set, this takes priority over WHISPER_HOST/PORT.
+OPENAI_API_KEY=sk-...
 ```
 
 > **`ORIGIN` is required.** SvelteKit uses it to validate `Host` headers for remote function calls. Set it to the actual LAN address of your server.
@@ -192,10 +197,11 @@ If `WATCHTOWER_TOKEN` isn't set, the version banner still works but the update b
 An optional tool-calling assistant (Claude, via `@anthropic-ai/sdk`) that can control playback, search the library and adjust Snapserver rooms from natural language.
 
 - `src/lib/server/assistant.ts` — the agent loop and tool implementations (wraps the same functions used by `mpd.remote.ts`/`snap.ts`, no separate MPD logic).
-- `src/lib/assistant.remote.ts` — `sendMessage(text)` remote command, for a text/voice chat UI in the web app.
-- `POST /api/assistant/voice` — binary endpoint (raw WAV body) for an external voice device (e.g. a wake-word client on a mic array): sends audio to a Whisper STT sidecar, runs the agent, synthesizes the reply with Piper, and returns WAV audio. Requires an `X-Assistant-Token` header matching `ASSISTANT_TOKEN`.
+- `src/lib/assistant.remote.ts` — `sendMessage(text)` remote command, used by the `/assistant` text/voice chat page in the web app.
+- `POST /api/assistant/voice` — binary endpoint (raw WAV body) for an external voice device (e.g. a wake-word client on a mic array): transcribes the audio, runs the agent, synthesizes the reply with Piper, and returns WAV audio. Requires an `X-Assistant-Token` header matching `ASSISTANT_TOKEN`.
+- `POST /api/assistant/voice-ui` — same pipeline, used by the mic button on `/assistant`; no token check since it's only reachable from the app's own frontend.
 
-Requires `ANTHROPIC_API_KEY`, `ASSISTANT_TOKEN`, and a Whisper STT sidecar reachable at `WHISPER_HOST`/`WHISPER_PORT` (not included in this repo yet — see `Dockerfile.piper` for the pattern to follow with `faster-whisper`).
+Requires `ANTHROPIC_API_KEY` and `ASSISTANT_TOKEN`. Transcription uses OpenAI's cloud STT (`OPENAI_API_KEY`, model `gpt-4o-mini-transcribe`) when that key is set — recommended on weak hardware like a Raspberry Pi, since local Whisper inference (`Dockerfile.whisper`, `whisper_server.py`) is CPU-bound and ARM lacks the SIMD instructions `faster-whisper` is optimized for. Without `OPENAI_API_KEY`, it falls back to the local Whisper sidecar at `WHISPER_HOST`/`WHISPER_PORT`.
 
 ---
 
@@ -293,7 +299,7 @@ ORIGIN=http://localhost:3000
 PORT=3000
 ```
 
-Piper and (if you enable the AI assistant) Whisper are read from `$env/static/private`, so `PIPER_HOST`/`PIPER_PORT`/`WHISPER_HOST`/`WHISPER_PORT` must also be present in `.env` even for local dev (point them at `localhost` and the sidecars' ports, or run those services yourself).
+If you enable the AI assistant locally, `PIPER_HOST`/`PIPER_PORT` (and `WHISPER_HOST`/`WHISPER_PORT`, unless `OPENAI_API_KEY` is set) need to point at running sidecars — `localhost` and their ports if you're running them yourself, or the Docker Compose service names otherwise.
 
 ### Scripts
 
