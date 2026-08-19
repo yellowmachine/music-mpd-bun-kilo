@@ -4,6 +4,7 @@
 		DatabaseIcon,
 		DownloadSimpleIcon,
 		PowerIcon,
+		SignOutIcon,
 		WarningIcon
 	} from 'phosphor-svelte';
 	import { isHttpError } from '@sveltejs/kit';
@@ -349,6 +350,22 @@
 					</button>
 				{/if}
 			</div>
+		</div>
+	</section>
+
+	<!-- Session -->
+	<section class="border border-[var(--color-border)]">
+		<div class="flex items-center justify-between px-4 py-3">
+			<p class="text-xs font-bold">Session</p>
+			<a
+				href="/logout"
+				class="flex items-center gap-1.5 border border-[var(--color-border)] px-3 py-1.5
+					text-[10px] tracking-wider uppercase transition-colors
+					hover:bg-[var(--color-fg)] hover:text-[var(--color-accent-fg)]"
+			>
+				<SignOutIcon size={11} weight="bold" />
+				log out
+			</a>
 		</div>
 	</section>
 </div>

@@ -60,6 +60,7 @@ services:
         PORT: '3000'
     environment:
       NODE_ENV: production
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       MPD_HOST: mpd
       MPD_PORT: '6600'
       SNAP_HOST: snapserver
