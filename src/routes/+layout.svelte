@@ -24,6 +24,13 @@
 
 	let overflowOpen = $state(false);
 
+	// The login page has no session yet, so it renders standalone below —
+	// without the nav/player chrome or an SSE connection that would just
+	// bounce off the auth gate. Tracked as a derived boolean (not read
+	// directly off $page inside the SSE effect) so normal in-app navigation
+	// doesn't tear the connection down and reconnect it on every route change.
+	let isLoginPage = $derived($page.url.pathname === '/login');
+
 	// Close overflow menu on navigation
 	$effect(() => {
 		$page.url.pathname;
@@ -31,7 +38,7 @@
 	});
 
 	$effect(() => {
-		if (!browser) return;
+		if (!browser || isLoginPage) return;
 
 		const eventSource = new EventSource('/sse');
 
@@ -130,173 +137,177 @@
 	<title>MPD</title>
 </svelte:head>
 
-<div class="flex h-screen flex-col overflow-hidden">
-	<div
-		class="mx-auto flex w-full max-w-3xl flex-1 flex-col overflow-hidden border-x border-[var(--color-border)]"
-	>
-		<!-- Navbar -->
-		<header
-			class="relative flex items-center justify-between border-b-2 border-[var(--color-border)] px-4 py-0"
+{#if isLoginPage}
+	{@render children()}
+{:else}
+	<div class="flex h-screen flex-col overflow-hidden">
+		<div
+			class="mx-auto flex w-full max-w-3xl flex-1 flex-col overflow-hidden border-x border-[var(--color-border)]"
 		>
-			<!-- Brand -->
-			<span class="text-xs font-bold tracking-[0.25em] uppercase">svelte-mpd</span>
+			<!-- Navbar -->
+			<header
+				class="relative flex items-center justify-between border-b-2 border-[var(--color-border)] px-4 py-0"
+			>
+				<!-- Brand -->
+				<span class="text-xs font-bold tracking-[0.25em] uppercase">svelte-mpd</span>
 
-			<!-- Nav links -->
-			<nav class="flex h-full items-stretch">
-				<!-- Always visible -->
-				<a
-					href="/"
-					aria-label="queue"
-					class="flex items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors
+				<!-- Nav links -->
+				<nav class="flex h-full items-stretch">
+					<!-- Always visible -->
+					<a
+						href="/"
+						aria-label="queue"
+						class="flex items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors
 					{$page.url.pathname === '/'
-						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-						: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
-				>
-					<QueueIcon size={14} weight="bold" />
-					<span class="hidden sm:inline">queue</span>
-				</a>
-				<a
-					href="/library"
-					aria-label="library"
-					class="flex items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors
+							? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+							: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+					>
+						<QueueIcon size={14} weight="bold" />
+						<span class="hidden sm:inline">queue</span>
+					</a>
+					<a
+						href="/library"
+						aria-label="library"
+						class="flex items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors
 					{$page.url.pathname.startsWith('/library')
-						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-						: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
-				>
-					<MusicNotesIcon size={14} weight="bold" />
-					<span class="hidden sm:inline">library</span>
-				</a>
-				<a
-					href="/search"
-					aria-label="search"
-					class="flex items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors
+							? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+							: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+					>
+						<MusicNotesIcon size={14} weight="bold" />
+						<span class="hidden sm:inline">library</span>
+					</a>
+					<a
+						href="/search"
+						aria-label="search"
+						class="flex items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors
 					{$page.url.pathname === '/search'
-						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-						: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
-				>
-					<MagnifyingGlassIcon size={14} weight="bold" />
-					<span class="hidden sm:inline">search</span>
-				</a>
-				<a
-					href="/playlists"
-					aria-label="playlists"
-					class="flex items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors
+							? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+							: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+					>
+						<MagnifyingGlassIcon size={14} weight="bold" />
+						<span class="hidden sm:inline">search</span>
+					</a>
+					<a
+						href="/playlists"
+						aria-label="playlists"
+						class="flex items-center gap-1.5 border-l border-[var(--color-border)] px-3 py-2.5 text-[10px] tracking-widest uppercase transition-colors
 					{$page.url.pathname.startsWith('/playlists')
-						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-						: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
-				>
-					<ListPlusIcon size={14} weight="bold" />
-					<span class="hidden sm:inline">playlists</span>
-				</a>
-				<!-- Overflow menu: radio, podcasts, articles, snap, admin.
+							? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+							: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+					>
+						<ListPlusIcon size={14} weight="bold" />
+						<span class="hidden sm:inline">playlists</span>
+					</a>
+					<!-- Overflow menu: radio, podcasts, articles, snap, admin.
 				     Always collapsed here (not just on mobile) — the app shell is capped
 				     at max-w-3xl regardless of screen size, so there's never enough room
 				     to show every section as its own tab, laptop included. -->
-				<button
-					onclick={() => (overflowOpen = !overflowOpen)}
-					class="flex items-center border-l border-[var(--color-border)] px-3 py-2.5 transition-colors
+					<button
+						onclick={() => (overflowOpen = !overflowOpen)}
+						class="flex items-center border-l border-[var(--color-border)] px-3 py-2.5 transition-colors
 					{overflowOpen ||
-					$page.url.pathname.startsWith('/radio') ||
-					$page.url.pathname.startsWith('/podcasts') ||
-					$page.url.pathname.startsWith('/articles') ||
-					$page.url.pathname === '/snap' ||
-					$page.url.pathname === '/assistant' ||
-					$page.url.pathname === '/admin'
-						? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-						: 'text-[var(--color-muted)]'}"
-					aria-label="more"
-				>
-					<DotsThreeIcon size={16} weight="bold" />
-				</button>
-			</nav>
+						$page.url.pathname.startsWith('/radio') ||
+						$page.url.pathname.startsWith('/podcasts') ||
+						$page.url.pathname.startsWith('/articles') ||
+						$page.url.pathname === '/snap' ||
+						$page.url.pathname === '/assistant' ||
+						$page.url.pathname === '/admin'
+							? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+							: 'text-[var(--color-muted)]'}"
+						aria-label="more"
+					>
+						<DotsThreeIcon size={16} weight="bold" />
+					</button>
+				</nav>
 
-			<!-- Connection status -->
-			<span class="text-[10px] text-[var(--color-muted)]">
-				{mpdStore.connected ? '●' : '○'}
-			</span>
+				<!-- Connection status -->
+				<span class="text-[10px] text-[var(--color-muted)]">
+					{mpdStore.connected ? '●' : '○'}
+				</span>
 
-			<!-- Overflow dropdown -->
-			{#if overflowOpen}
-				<div
-					class="absolute top-full right-0 z-50 border border-[var(--color-border)] bg-[var(--color-bg)]"
-					style="min-width: 140px"
-				>
-					<a
-						href="/radio"
-						class="flex items-center gap-2 border-b border-[var(--color-border)]/30 px-4 py-3 text-[10px] tracking-widest uppercase transition-colors
+				<!-- Overflow dropdown -->
+				{#if overflowOpen}
+					<div
+						class="absolute top-full right-0 z-50 border border-[var(--color-border)] bg-[var(--color-bg)]"
+						style="min-width: 140px"
+					>
+						<a
+							href="/radio"
+							class="flex items-center gap-2 border-b border-[var(--color-border)]/30 px-4 py-3 text-[10px] tracking-widest uppercase transition-colors
 						{$page.url.pathname.startsWith('/radio')
-							? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-							: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
-					>
-						<RadioIcon size={13} weight="bold" />
-						radio
-					</a>
-					<a
-						href="/podcasts"
-						class="flex items-center gap-2 border-b border-[var(--color-border)]/30 px-4 py-3 text-[10px] tracking-widest uppercase transition-colors
+								? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+								: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+						>
+							<RadioIcon size={13} weight="bold" />
+							radio
+						</a>
+						<a
+							href="/podcasts"
+							class="flex items-center gap-2 border-b border-[var(--color-border)]/30 px-4 py-3 text-[10px] tracking-widest uppercase transition-colors
 						{$page.url.pathname.startsWith('/podcasts')
-							? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-							: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
-					>
-						<RssIcon size={13} weight="bold" />
-						podcasts
-					</a>
-					<a
-						href="/articles"
-						class="flex items-center gap-2 border-b border-[var(--color-border)]/30 px-4 py-3 text-[10px] tracking-widest uppercase transition-colors
+								? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+								: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+						>
+							<RssIcon size={13} weight="bold" />
+							podcasts
+						</a>
+						<a
+							href="/articles"
+							class="flex items-center gap-2 border-b border-[var(--color-border)]/30 px-4 py-3 text-[10px] tracking-widest uppercase transition-colors
 						{$page.url.pathname.startsWith('/articles')
-							? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-							: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
-					>
-						<ArticleIcon size={13} weight="bold" />
-						articles
-					</a>
-					<a
-						href="/snap"
-						class="flex items-center gap-2 border-b border-[var(--color-border)]/30 px-4 py-3 text-[10px] tracking-widest uppercase transition-colors
+								? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+								: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+						>
+							<ArticleIcon size={13} weight="bold" />
+							articles
+						</a>
+						<a
+							href="/snap"
+							class="flex items-center gap-2 border-b border-[var(--color-border)]/30 px-4 py-3 text-[10px] tracking-widest uppercase transition-colors
 						{$page.url.pathname === '/snap'
-							? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-							: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
-					>
-						<SpeakerHighIcon size={13} weight="bold" />
-						snap
-					</a>
-					<a
-						href="/assistant"
-						class="flex items-center gap-2 border-b border-[var(--color-border)]/30 px-4 py-3 text-[10px] tracking-widest uppercase transition-colors
+								? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+								: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+						>
+							<SpeakerHighIcon size={13} weight="bold" />
+							snap
+						</a>
+						<a
+							href="/assistant"
+							class="flex items-center gap-2 border-b border-[var(--color-border)]/30 px-4 py-3 text-[10px] tracking-widest uppercase transition-colors
 						{$page.url.pathname === '/assistant'
-							? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-							: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
-					>
-						<RobotIcon size={13} weight="bold" />
-						asistente
-					</a>
-					<a
-						href="/admin"
-						class="flex items-center gap-2 px-4 py-3 text-[10px] tracking-widest uppercase transition-colors
+								? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+								: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+						>
+							<RobotIcon size={13} weight="bold" />
+							asistente
+						</a>
+						<a
+							href="/admin"
+							class="flex items-center gap-2 px-4 py-3 text-[10px] tracking-widest uppercase transition-colors
 						{$page.url.pathname === '/admin'
-							? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
-							: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
-					>
-						<GearIcon size={13} weight="bold" />
-						admin
-					</a>
-				</div>
-			{/if}
-		</header>
+								? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
+								: 'text-[var(--color-muted)] hover:text-[var(--color-fg)]'}"
+						>
+							<GearIcon size={13} weight="bold" />
+							admin
+						</a>
+					</div>
+				{/if}
+			</header>
 
-		<!-- Main content -->
-		<main class="min-h-0 flex-1 overflow-auto">
-			{@render children()}
-		</main>
+			<!-- Main content -->
+			<main class="min-h-0 flex-1 overflow-auto">
+				{@render children()}
+			</main>
 
-		<!-- Player bar -->
-		<Player />
+			<!-- Player bar -->
+			<Player />
 
-		<footer
-			class="border-t border-[var(--color-border)]/30 px-4 py-2 text-center text-[10px] tracking-widest text-[var(--color-muted)] uppercase"
-		>
-			built with the help of claude
-		</footer>
+			<footer
+				class="border-t border-[var(--color-border)]/30 px-4 py-2 text-center text-[10px] tracking-widest text-[var(--color-muted)] uppercase"
+			>
+				built with the help of claude
+			</footer>
+		</div>
 	</div>
-</div>
+{/if}

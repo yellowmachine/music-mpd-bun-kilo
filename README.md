@@ -53,6 +53,9 @@ cd music-bun-kilo
 Create a `.env` file at the project root:
 
 ```env
+# REQUIRED: password for the web UI login screen (see "Login" below)
+ADMIN_PASSWORD=<a password of your choice>
+
 # MPD connection (use service name inside Docker Compose)
 MPD_HOST=mpd
 MPD_PORT=6600
@@ -144,6 +147,14 @@ Install a [Snapcast client](https://github.com/badaix/snapcast#client) on any de
 
 ---
 
+## Login
+
+The whole app sits behind a single shared password, checked against `ADMIN_PASSWORD` in `.env`. Visiting any page while unauthenticated redirects to `/login`; entering the correct password sets an `httpOnly` cookie that never expires (log back out to clear it). Log out from the **Session** section on `/admin`, which hits `/logout` and clears the cookie.
+
+`POST /api/assistant/voice` is exempt from this gate since it's called by an external device that authenticates with its own `X-Assistant-Token` header instead (see "AI assistant" below).
+
+---
+
 ## Configuration files
 
 | File                 | Description                                                             |
@@ -214,7 +225,8 @@ Requires `ANTHROPIC_API_KEY` and `ASSISTANT_TOKEN`. Transcription uses OpenAI's 
 | `/library`           | Music library filesystem browser             |
 | `/library/[...path]` | Nested directory navigation                  |
 | `/snap`              | Snapserver multi-room client volume control  |
-| `/admin`             | MPD database update, app version/update, system reboot/shutdown |
+| `/admin`             | MPD database update, app version/update, system reboot/shutdown, log out |
+| `/login`             | Password login screen (redirected here when not authenticated) |
 
 ### Player bar (persistent, all pages)
 

@@ -54,6 +54,7 @@ services:
       - 'com.centurylinklabs.watchtower.enable=true'
     environment:
       NODE_ENV: production
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       MPD_HOST: mpd
       MPD_PORT: '6600'
       SNAP_HOST: snapserver
