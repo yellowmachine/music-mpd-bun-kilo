@@ -1,5 +1,11 @@
 <script lang="ts">
-	import { MagnifyingGlassIcon, XIcon, PlayIcon, PlusIcon, BookmarkSimpleIcon } from 'phosphor-svelte';
+	import {
+		MagnifyingGlassIcon,
+		XIcon,
+		PlayIcon,
+		PlusIcon,
+		BookmarkSimpleIcon
+	} from 'phosphor-svelte';
 	import { searchRadios } from '$lib/radio.remote';
 	import { addToQueue, playNow } from '$lib/mpd.remote';
 	import AddToPlaylistPopup from '$lib/components/AddToPlaylistPopup.svelte';
@@ -64,12 +70,16 @@
 {#if results === null}
 	<!-- Top stations -->
 	{#if data.stations.length === 0}
-		<p class="px-4 py-8 text-center text-xs text-[var(--color-muted)]">— could not load stations —</p>
+		<p class="px-4 py-8 text-center text-xs text-[var(--color-muted)]">
+			— could not load stations —
+		</p>
 	{:else}
 		<p class="px-4 py-2 text-[10px] text-[var(--color-muted)]">— top stations —</p>
 		<ul>
 			{#each data.stations as station (station.stationuuid)}
-				<li class="group flex items-center gap-3 border-b border-[var(--color-border)]/30 px-4 py-2 hover:bg-[var(--color-fg)]/5">
+				<li
+					class="group flex items-center gap-3 border-b border-[var(--color-border)]/30 px-4 py-2 hover:bg-[var(--color-fg)]/5"
+				>
 					<!-- Favicon -->
 					<div class="flex h-6 w-6 shrink-0 items-center justify-center">
 						{#if station.favicon}
@@ -77,24 +87,30 @@
 								src={station.favicon}
 								alt=""
 								class="h-5 w-5 object-contain"
-								onerror={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+								onerror={(e) => {
+									(e.currentTarget as HTMLImageElement).style.display = 'none';
+								}}
 							/>
 						{/if}
 					</div>
 
 					<!-- Info -->
 					<div class="min-w-0 flex-1">
-						<p class="truncate text-xs font-bold leading-tight">{station.name}</p>
+						<p class="truncate text-xs leading-tight font-bold">{station.name}</p>
 						<p class="truncate text-[10px] leading-tight text-[var(--color-muted)]">
 							{station.countrycode}
 							{#if station.bitrate}· {station.bitrate}kbps{/if}
 							{#if station.codec}· {station.codec}{/if}
-							{#if station.tags}· <span class="opacity-70">{station.tags.split(',').slice(0, 3).join(', ')}</span>{/if}
+							{#if station.tags}· <span class="opacity-70"
+									>{station.tags.split(',').slice(0, 3).join(', ')}</span
+								>{/if}
 						</p>
 					</div>
 
 					<!-- Actions -->
-					<div class="flex shrink-0 items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+					<div
+						class="flex shrink-0 items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
+					>
 						<button
 							onclick={() => handleAdd(station)}
 							disabled={adding !== null}
@@ -156,29 +172,37 @@
 		{:else}
 			<ul>
 				{#each stations as station (station.stationuuid)}
-					<li class="group flex items-center gap-3 border-b border-[var(--color-border)]/30 px-4 py-2 hover:bg-[var(--color-fg)]/5">
+					<li
+						class="group flex items-center gap-3 border-b border-[var(--color-border)]/30 px-4 py-2 hover:bg-[var(--color-fg)]/5"
+					>
 						<div class="flex h-6 w-6 shrink-0 items-center justify-center">
 							{#if station.favicon}
 								<img
 									src={station.favicon}
 									alt=""
 									class="h-5 w-5 object-contain"
-									onerror={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+									onerror={(e) => {
+										(e.currentTarget as HTMLImageElement).style.display = 'none';
+									}}
 								/>
 							{/if}
 						</div>
 
 						<div class="min-w-0 flex-1">
-							<p class="truncate text-xs font-bold leading-tight">{station.name}</p>
+							<p class="truncate text-xs leading-tight font-bold">{station.name}</p>
 							<p class="truncate text-[10px] leading-tight text-[var(--color-muted)]">
 								{station.countrycode}
 								{#if station.bitrate}· {station.bitrate}kbps{/if}
 								{#if station.codec}· {station.codec}{/if}
-								{#if station.tags}· <span class="opacity-70">{station.tags.split(',').slice(0, 3).join(', ')}</span>{/if}
+								{#if station.tags}· <span class="opacity-70"
+										>{station.tags.split(',').slice(0, 3).join(', ')}</span
+									>{/if}
 							</p>
 						</div>
 
-						<div class="flex shrink-0 items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+						<div
+							class="flex shrink-0 items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
+						>
 							<button
 								onclick={() => handleAdd(station)}
 								disabled={adding !== null}

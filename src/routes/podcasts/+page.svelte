@@ -17,7 +17,8 @@
 			await subscribeFeed(url).updates(getSubscribedFeeds());
 			feedUrl = '';
 		} catch (err) {
-			error = (err as { body?: { message?: string } })?.body?.message || 'could not subscribe to feed';
+			error =
+				(err as { body?: { message?: string } })?.body?.message || 'could not subscribe to feed';
 		} finally {
 			subscribing = false;
 		}

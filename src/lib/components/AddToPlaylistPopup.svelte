@@ -56,7 +56,7 @@
 			<span class="text-[10px] font-bold tracking-widest uppercase">add to playlist</span>
 			<button
 				onclick={onclose}
-				class="text-[var(--color-muted)] hover:text-[var(--color-fg)] transition-colors"
+				class="text-[var(--color-muted)] transition-colors hover:text-[var(--color-fg)]"
 			>
 				<XIcon size={12} weight="bold" />
 			</button>
@@ -72,7 +72,7 @@
 							<button
 								onclick={() => addTo(item.playlist)}
 								disabled={saving}
-								class="w-full text-left px-2 py-1.5 text-[10px] transition-colors
+								class="w-full px-2 py-1.5 text-left text-[10px] transition-colors
 									{savedTo === item.playlist
 									? 'bg-[var(--color-fg)] text-[var(--color-accent-fg)]'
 									: 'hover:bg-[var(--color-fg)] hover:text-[var(--color-accent-fg)]'}

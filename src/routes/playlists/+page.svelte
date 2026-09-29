@@ -22,7 +22,9 @@
 		adding = name;
 		try {
 			await addPlaylistToQueue(name);
-			setTimeout(() => { if (adding === name) adding = null; }, 2000);
+			setTimeout(() => {
+				if (adding === name) adding = null;
+			}, 2000);
 		} catch {
 			adding = null;
 		}
@@ -34,7 +36,9 @@
 {:else}
 	<ul>
 		{#each data.playlists as item}
-			<li class="group flex items-center gap-3 border-b border-[var(--color-border)]/30 px-4 py-2 hover:bg-[var(--color-fg)]/5">
+			<li
+				class="group flex items-center gap-3 border-b border-[var(--color-border)]/30 px-4 py-2 hover:bg-[var(--color-fg)]/5"
+			>
 				<ListPlusIcon size={13} weight="bold" class="shrink-0 text-[var(--color-muted)]" />
 
 				<a
@@ -45,7 +49,9 @@
 				</a>
 
 				<!-- Actions -->
-				<div class="flex shrink-0 items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+				<div
+					class="flex shrink-0 items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
+				>
 					<!-- Add to queue -->
 					<button
 						onclick={() => handleAdd(item.playlist)}

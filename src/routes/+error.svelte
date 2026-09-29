@@ -75,8 +75,8 @@
 			/>
 		</svg>
 
-		<p class="text-[3.5rem] font-bold leading-none tracking-[0.5rem]">404</p>
-		<p class="text-[0.7rem] uppercase tracking-[0.35rem]">Track Not Found</p>
+		<p class="text-[3.5rem] leading-none font-bold tracking-[0.5rem]">404</p>
+		<p class="text-[0.7rem] tracking-[0.35rem] uppercase">Track Not Found</p>
 		<p class="max-w-xs text-center text-[0.65rem] text-[var(--color-muted)]">
 			The requested resource could not be located in the library.
 		</p>
@@ -140,8 +140,8 @@
 			/>
 		</svg>
 
-		<p class="text-[3.5rem] font-bold leading-none tracking-[0.5rem]">{$page.status}</p>
-		<p class="text-[0.7rem] uppercase tracking-[0.35rem]">Playback Error</p>
+		<p class="text-[3.5rem] leading-none font-bold tracking-[0.5rem]">{$page.status}</p>
+		<p class="text-[0.7rem] tracking-[0.35rem] uppercase">Playback Error</p>
 		<p class="max-w-xs text-center text-[0.65rem] text-[var(--color-muted)]">
 			{$page.error?.message ?? 'Something went wrong on the server.'}
 		</p>
@@ -149,7 +149,7 @@
 
 	<a
 		href="/"
-		class="mt-2 border border-[var(--color-border)] px-4 py-2 text-[0.65rem] uppercase tracking-[0.3rem] transition-colors hover:bg-[var(--color-fg)] hover:text-[var(--color-accent-fg)]"
+		class="mt-2 border border-[var(--color-border)] px-4 py-2 text-[0.65rem] tracking-[0.3rem] uppercase transition-colors hover:bg-[var(--color-fg)] hover:text-[var(--color-accent-fg)]"
 	>
 		← Return to Library
 	</a>
