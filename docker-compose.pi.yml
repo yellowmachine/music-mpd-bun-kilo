@@ -1,0 +1,87 @@
+# Raspberry Pi stack once the web app runs on the VPS: audio services plus
+# mpd-bridge, reached from the VPS only through the Cloudflare tunnel.
+#
+# Nothing here exposes MPD or Snapserver's control API. The only published
+# port is Snapcast's audio stream (1704) for snapclients on the LAN.
+#
+# Required in .env next to this file:
+#   BRIDGE_API_TOKEN=<openssl rand -hex 32>   (same value as the app's MPD_BRIDGE_TOKEN)
+#   CLOUDFLARE_TUNNEL_TOKEN=<from Zero Trust > Networks > Tunnels>
+#
+# Run: docker compose -f docker-compose.pi.yml up -d
+
+services:
+  mpd:
+    image: ghcr.io/yellowmachine/music-mpd-bun-kilo-mpd:latest
+    depends_on:
+      - snapserver
+    volumes:
+      - /music:/var/lib/mpd/music:ro
+      - ./playlists:/var/lib/mpd/playlists
+      - ./mpd-db:/var/lib/mpd
+      - shared-fifo:/shared
+    restart: unless-stopped
+    # No ports: only mpd-bridge talks to MPD, over the compose network. To use
+    # a local client such as ncmpcpp on the Pi itself, publish it on loopback:
+    # ports:
+    #   - '127.0.0.1:6600:6600'
+    healthcheck:
+      test: ['CMD-SHELL', 'nc -z localhost 6600 || exit 1']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  snapserver:
+    image: ghcr.io/yellowmachine/music-mpd-bun-kilo-snapserver:latest
+    volumes:
+      - ./snapserver.conf:/etc/snapserver.conf
+      - shared-fifo:/shared
+    restart: unless-stopped
+    ports:
+      # Audio stream for snapclients on the LAN. The control API (1705) and
+      # the HTTP/JSON-RPC UI (1780) have no auth and stay internal.
+      - '1704:1704'
+
+  snapclient:
+    image: ghcr.io/yellowmachine/music-mpd-bun-kilo-snapclient:latest
+    command: snapclient -h snapserver --hostID arriba -s Headphones
+    depends_on:
+      - snapserver
+    restart: unless-stopped
+    devices:
+      - /dev/snd:/dev/snd
+    volumes:
+      - ./asound.conf:/etc/asound.conf:ro
+
+  mpd-bridge:
+    image: ghcr.io/yellowmachine/music-mpd-bun-kilo-mpd-bridge:latest
+    environment:
+      MPD_HOST: mpd
+      SNAP_HOST: snapserver
+      # Listens on the compose network so cloudflared can reach it; it has no
+      # `ports`, so it is not reachable from the host or the LAN.
+      LISTEN_ADDR: 0.0.0.0:8787
+      API_TOKEN: ${BRIDGE_API_TOKEN:?set BRIDGE_API_TOKEN in .env}
+    depends_on:
+      mpd:
+        condition: service_healthy
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    # The tunnel's public hostname routes to http://mpd-bridge:8787 (set in
+    # the Cloudflare dashboard) and is protected by a Cloudflare Access
+    # application with a Service Token.
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env}
+    depends_on:
+      - mpd-bridge
+    restart: unless-stopped
+
+volumes:
+  shared-fifo:
