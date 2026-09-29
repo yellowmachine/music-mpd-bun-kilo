@@ -187,11 +187,11 @@ The `restart: unless-stopped` policy (set in `docker-compose.yml`) ensures the s
 The app can run on a VPS while MPD, Snapcast and the music stay on the Pi. The two halves talk only through `mpd-bridge`, published by a Cloudflare tunnel and protected by Cloudflare Access plus the bridge's own token.
 
 ```
-browser ──HTTPS──▶ Caddy ─▶ svelte-mpd (VPS) ──HTTPS──▶ Cloudflare Access ─▶ tunnel ─▶ mpd-bridge (Pi) ─▶ MPD / Snapserver
+browser ──HTTPS──▶ your proxy ─▶ svelte-mpd (VPS) ──HTTPS──▶ Cloudflare Access ─▶ tunnel ─▶ mpd-bridge (Pi) ─▶ MPD / Snapserver
 ```
 
 1. **On the Pi:** run `docker-compose.pi.yml` (MPD, Snapcast, `mpd-bridge`, `cloudflared`). The [bridge README](mpd-bridge/README.md#cloudflare-setup) covers creating the tunnel, the Access application and its service token.
-2. **On the VPS:** point a DNS record at it, fill in the `.env` described at the top of `docker-compose.vps.yml` (domain, bridge URL and token, `CF_ACCESS_CLIENT_ID`/`CF_ACCESS_CLIENT_SECRET`, admin password), and run `docker compose -f docker-compose.vps.yml up -d`. Caddy obtains a Let's Encrypt certificate for the domain.
+2. **On the VPS:** point a DNS record at it, fill in the `.env` described at the top of `docker-compose.vps.yml` (domain, bridge URL and token, `CF_ACCESS_CLIENT_ID`/`CF_ACCESS_CLIENT_SECRET`, admin password), and run `docker compose -f docker-compose.vps.yml up -d`. The app listens on port 3000; serve it over HTTPS at `https://<domain>` with your own reverse proxy (`ORIGIN` must match that URL).
 
 Article audio is generated on the VPS, and MPD on the Pi fetches it from `https://<domain>/audio/<id>`. Those URLs carry an HMAC signature so they work without the login cookie. Set `AUDIO_URL_SECRET` to sign them with a dedicated key; otherwise the key is derived from `ADMIN_PASSWORD`, and changing the password invalidates article audio already saved in playlists.
 

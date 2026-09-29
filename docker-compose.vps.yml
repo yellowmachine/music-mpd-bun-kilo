@@ -3,7 +3,7 @@
 # and are reached through mpd-bridge, behind a Cloudflare tunnel.
 #
 # Required in .env next to this file:
-#   DOMAIN=music.example.com          public hostname, pointing at this VPS
+#   DOMAIN=music.example.com          public hostname your reverse proxy serves
 #   ADMIN_PASSWORD=...
 #   MPD_BRIDGE_URL=https://mpd-bridge.example.com
 #   MPD_BRIDGE_TOKEN=...              same value as BRIDGE_API_TOKEN on the Pi
@@ -46,6 +46,10 @@ services:
       - piper
       - whisper
     restart: unless-stopped
+    # Serve it over HTTPS with your own reverse proxy at https://$DOMAIN;
+    # ORIGIN must match that public URL.
+    ports:
+      - '3000:3000'
 
   piper:
     image: ghcr.io/yellowmachine/music-mpd-bun-kilo-piper:latest
@@ -54,21 +58,6 @@ services:
   whisper:
     image: ghcr.io/yellowmachine/music-mpd-bun-kilo-whisper:latest
     restart: unless-stopped
-
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    environment:
-      DOMAIN: ${DOMAIN}
-    volumes:
-      - ./Caddyfile.vps:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-      - caddy-config:/config
-    depends_on:
-      - svelte-mpd
-    ports:
-      - '80:80'
-      - '443:443'
 
   # Applies app updates on demand, triggered from /admin (see docker-compose.prod.yml).
   watchtower:
@@ -81,7 +70,3 @@ services:
       WATCHTOWER_LABEL_ENABLE: 'true'
       WATCHTOWER_CLEANUP: 'true'
     restart: unless-stopped
-
-volumes:
-  caddy-data:
-  caddy-config:

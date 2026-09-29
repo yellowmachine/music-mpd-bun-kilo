@@ -1,5 +1,0 @@
-# Public HTTPS for the app on the VPS. Caddy gets and renews a Let's Encrypt
-# certificate for $DOMAIN automatically (ports 80 and 443 must be reachable).
-{$DOMAIN} {
-	reverse_proxy svelte-mpd:3000
-}
