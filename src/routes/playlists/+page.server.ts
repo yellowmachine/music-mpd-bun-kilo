@@ -1,8 +1,7 @@
 import type { PageServerLoad } from './$types';
-import { getClient } from '$lib/server/mpd';
+import { getPlaylists } from '$lib/server/bridge';
 
 export const load: PageServerLoad = async () => {
-	const mpd = await getClient();
-	const playlists = await mpd.api.playlists.get<{ playlist: string; last_modified?: string }>();
+	const playlists = await getPlaylists();
 	return { playlists };
 };

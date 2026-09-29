@@ -34,10 +34,6 @@
 		cancelled = true;
 	});
 
-	function audioUrlFor(segmentId: number): string {
-		return `${$page.url.origin}/audio/${segmentId}`;
-	}
-
 	function sortedReady(segments: ArticleSegment[]): ArticleSegment[] {
 		return segments.filter((s) => s.status === 'ready').sort((a, b) => a.index - b.index);
 	}
@@ -61,10 +57,10 @@
 				for (const seg of sortedReady(segments)) {
 					if (queued.has(seg.id)) continue;
 					if (!firstQueued) {
-						await playNow(audioUrlFor(seg.id));
+						await playNow(seg.url);
 						firstQueued = true;
 					} else {
-						await addToQueue(audioUrlFor(seg.id));
+						await addToQueue(seg.url);
 					}
 					queued.add(seg.id);
 				}
@@ -93,8 +89,8 @@
 		if (ready.length === 0) return;
 		playing = guid;
 		try {
-			await playNow(audioUrlFor(ready[0].id));
-			for (const seg of ready.slice(1)) await addToQueue(audioUrlFor(seg.id));
+			await playNow(ready[0].url);
+			for (const seg of ready.slice(1)) await addToQueue(seg.url);
 		} finally {
 			playing = null;
 		}
@@ -106,7 +102,7 @@
 		if (ready.length === 0) return;
 		adding = guid;
 		try {
-			for (const seg of ready) await addToQueue(audioUrlFor(seg.id));
+			for (const seg of ready) await addToQueue(seg.url);
 			setTimeout(() => {
 				if (adding === guid) adding = null;
 			}, 2000);
@@ -229,7 +225,7 @@
 
 					{#if playlistPopup === item.guid && allReady}
 						<AddToPlaylistPopup
-							songUri={audioUrlFor(sortedReady(item.segments)[0].id)}
+							songUri={sortedReady(item.segments)[0].url}
 							onclose={() => (playlistPopup = null)}
 						/>
 					{/if}

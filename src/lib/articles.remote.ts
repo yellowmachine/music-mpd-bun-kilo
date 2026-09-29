@@ -20,6 +20,7 @@ import {
 } from '$lib/server/articles';
 import { extractArticleText, splitIntoSegments } from '$lib/server/extract';
 import { synthesize } from '$lib/server/piper';
+import { audioUrl } from '$lib/server/audio-url';
 
 // --- Types ---
 
@@ -33,6 +34,8 @@ export interface ArticleSegment {
 	id: number;
 	index: number;
 	status: 'pending' | 'ready' | 'error';
+	/** Signed, absolute URL for MPD to fetch the audio from. */
+	url: string;
 }
 
 export interface FeedItem {
@@ -48,7 +51,7 @@ function toFeed(row: ArticleFeedRow): ArticleFeed {
 }
 
 function toSegment(row: ArticleRow): ArticleSegment {
-	return { id: row.id, index: row.segment_index, status: row.status };
+	return { id: row.id, index: row.segment_index, status: row.status, url: audioUrl(row.id) };
 }
 
 // --- Queries ---

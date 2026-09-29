@@ -45,15 +45,24 @@ services:
     ports:
       - '5001:5001'
 
+  mpd-bridge:
+    build:
+      context: ./mpd-bridge
+    environment:
+      MPD_HOST: mpd
+      SNAP_HOST: snapserver
+      LISTEN_ADDR: 0.0.0.0:8787
+      API_TOKEN: ${BRIDGE_API_TOKEN:?set BRIDGE_API_TOKEN in .env (openssl rand -hex 32)}
+    depends_on:
+      - mpd
+      - snapserver
+    restart: unless-stopped
+
   svelte-mpd:
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        MPD_HOST: mpd
-        MPD_PORT: 6600
-        SNAP_HOST: snapserver
-        SNAP_PORT: 1780
         PIPER_HOST: piper
         PIPER_PORT: 5000
         ORIGIN: http://192.168.0.169:3000
@@ -61,10 +70,8 @@ services:
     environment:
       NODE_ENV: production
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
-      MPD_HOST: mpd
-      MPD_PORT: '6600'
-      SNAP_HOST: snapserver
-      SNAP_PORT: '1780'
+      MPD_BRIDGE_URL: http://mpd-bridge:8787
+      MPD_BRIDGE_TOKEN: ${BRIDGE_API_TOKEN}
       PIPER_HOST: piper
       PIPER_PORT: '5000'
       ORIGIN: ${ORIGIN}
@@ -77,12 +84,10 @@ services:
     volumes:
       - ./podcasts-data:/app/data
     depends_on:
-      - mpd
-      - snapserver
+      - mpd-bridge
       - piper
       - whisper
     restart: unless-stopped
-    privileged: true
     ports:
       - '3000:3000'
 

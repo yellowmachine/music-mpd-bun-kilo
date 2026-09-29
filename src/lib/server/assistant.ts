@@ -1,6 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { isHttpError } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
-import { getClient, search as searchLibrary } from '$lib/server/mpd';
+import * as bridge from '$lib/server/bridge';
+import { search as searchLibrary } from '$lib/server/mpd';
 import { getClients, setClientVolume, setClientMute } from '$lib/server/snap';
 
 const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
@@ -104,9 +106,17 @@ function findRoom(name: string) {
 	return getClients().find((c) => c.name.toLowerCase().includes(needle));
 }
 
-async function runTool(name: string, input: Record<string, unknown>): Promise<unknown> {
-	const mpd = await getClient();
+// The assistant's "prev" is the bridge's "previous".
+const TRANSPORT: Record<PlaybackAction, bridge.TransportAction> = {
+	play: 'play',
+	pause: 'pause',
+	resume: 'resume',
+	stop: 'stop',
+	next: 'next',
+	prev: 'previous'
+};
 
+async function runTool(name: string, input: Record<string, unknown>): Promise<unknown> {
 	switch (name) {
 		case 'search_library':
 			return searchLibrary(String(input.query)).slice(0, 8);
@@ -114,9 +124,7 @@ async function runTool(name: string, input: Record<string, unknown>): Promise<un
 		case 'play_song': {
 			const hit = searchLibrary(String(input.query))[0];
 			if (!hit) return { error: 'no encontrado' };
-			await mpd.api.queue.clear();
-			await mpd.api.queue.add(hit.file);
-			await mpd.api.playback.play();
+			await bridge.addToQueue([hit.file], { replace: true, play: true });
 			return { playing: hit };
 		}
 
@@ -131,24 +139,23 @@ async function runTool(name: string, input: Record<string, unknown>): Promise<un
 				)
 				.sort((a, b) => Number(a.track ?? 0) - Number(b.track ?? 0));
 			if (!tracks.length) return { error: 'álbum no encontrado' };
-			await mpd.api.queue.clear();
-			for (const t of tracks) await mpd.api.queue.add(t.file);
-			await mpd.api.playback.play();
+			await bridge.addToQueue(
+				tracks.map((t) => t.file),
+				{ replace: true, play: true }
+			);
 			return { queued: tracks.length, album };
 		}
 
 		case 'queue_song': {
 			const hit = searchLibrary(String(input.query))[0];
 			if (!hit) return { error: 'no encontrado' };
-			await mpd.api.queue.add(hit.file);
+			await bridge.addToQueue([hit.file]);
 			return { queued: hit };
 		}
 
 		case 'play_playlist': {
 			const playlistName = String(input.name);
-			await mpd.api.queue.clear();
-			await mpd.api.playlists.load(playlistName);
-			await mpd.api.playback.play();
+			await bridge.playlistLoad(playlistName, { replace: true, play: true });
 			return { playing_playlist: playlistName };
 		}
 
@@ -156,24 +163,25 @@ async function runTool(name: string, input: Record<string, unknown>): Promise<un
 			const action = input.action as PlaybackAction;
 			if (!PLAYBACK_ACTIONS.includes(action))
 				return { error: `acción desconocida: ${String(input.action)}` };
-			await mpd.api.playback[action]();
+			await bridge.transport(TRANSPORT[action]);
 			return { ok: true, action };
 		}
 
 		case 'set_volume': {
 			const percent = Number(input.percent);
-			await mpd.api.playback.setvol(String(percent));
+			if (!Number.isFinite(percent)) return { error: 'volumen no válido' };
+			await bridge.setVolume(percent);
 			return { volume: percent };
 		}
 
 		case 'set_random': {
 			const enabled = Boolean(input.enabled);
-			await mpd.api.playback.random(String(enabled));
+			await bridge.setOptions({ random: enabled });
 			return { random: enabled };
 		}
 
 		case 'get_now_playing':
-			return { status: await mpd.api.status.get(), song: await mpd.api.status.currentsong() };
+			return bridge.getPlayerState();
 
 		case 'list_rooms':
 			return getClients().map((c) => ({ id: c.id, name: c.name, volume: c.volume }));
@@ -199,6 +207,11 @@ async function runTool(name: string, input: Record<string, unknown>): Promise<un
 		default:
 			return { error: `tool desconocida: ${name}` };
 	}
+}
+
+function errorText(err: unknown): string {
+	if (isHttpError(err)) return err.body.message;
+	return err instanceof Error ? err.message : String(err);
 }
 
 const SYSTEM_PROMPT = `Eres el asistente de voz de un equipo de música doméstico (MPD + Snapcast multi-sala).
@@ -239,7 +252,11 @@ export async function runAssistant(
 		const toolResults: Anthropic.ToolResultBlockParam[] = [];
 		for (const block of response.content) {
 			if (block.type === 'tool_use') {
-				const result = await runTool(block.name, block.input as Record<string, unknown>);
+				const result = await runTool(block.name, block.input as Record<string, unknown>).catch(
+					// e.g. the bridge answered 404 for an unknown playlist: let the model
+					// tell the user instead of failing the whole request.
+					(err: unknown) => ({ error: errorText(err) })
+				);
 				toolResults.push({
 					type: 'tool_result',
 					tool_use_id: block.id,

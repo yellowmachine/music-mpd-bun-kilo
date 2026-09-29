@@ -12,7 +12,8 @@ Built with Bun, SvelteKit 2, Svelte 5 (runes), TailwindCSS v4, and a typewriter/
 - **Fuzzy search** — instant full-library search powered by a server-side MiniSearch index
 - **Multi-room audio** — per-client volume and mute control via Snapserver
 - **Real-time sync** — SSE keeps all open browser tabs in sync (player, queue, volume, options)
-- **Admin panel** — trigger MPD database rescan, reboot or shut down the host machine
+- **Admin panel** — trigger MPD database rescan, check for and apply app updates
+- **Runs anywhere** — the app talks to MPD and Snapserver through [`mpd-bridge`](mpd-bridge/README.md), so it can live on the Pi next to the speakers or on a VPS, reaching the Pi through a Cloudflare tunnel
 - **PWA** — installable as a standalone app
 
 ---
@@ -26,7 +27,7 @@ Built with Bun, SvelteKit 2, Svelte 5 (runes), TailwindCSS v4, and a typewriter/
 | Adapter           | `@sveltejs/adapter-node`               |
 | Styling           | TailwindCSS v4                         |
 | Icons             | `phosphor-svelte` v3                   |
-| MPD client        | `mpd-api` (TCP)                        |
+| MPD / Snapcast    | HTTP + SSE via `mpd-bridge` (Go)       |
 | Snapserver client | WebSocket + HTTP JSON-RPC              |
 | Search            | MiniSearch v7 (in-memory, server-side) |
 | Real-time         | Server-Sent Events (SSE)               |
@@ -56,13 +57,8 @@ Create a `.env` file at the project root:
 # REQUIRED: password for the web UI login screen (see "Login" below)
 ADMIN_PASSWORD=<a password of your choice>
 
-# MPD connection (use service name inside Docker Compose)
-MPD_HOST=mpd
-MPD_PORT=6600
-
-# Snapserver connection (use service name inside Docker Compose)
-SNAP_HOST=snapserver
-SNAP_PORT=1780
+# REQUIRED: token shared by the app and mpd-bridge (openssl rand -hex 32)
+BRIDGE_API_TOKEN=<a long random string>
 
 # REQUIRED: LAN IP (or hostname) of the server + web app port
 # Must be reachable by other devices on your network
@@ -124,8 +120,10 @@ After adding new music files, go to `/admin` and click **Update database** to tr
 | svelte-mpd | 3000 | HTTP     | Web application                           |
 | mpd        | 6600 | TCP      | MPD protocol (for external MPD clients)   |
 | snapserver | 1704 | TCP      | Snapcast audio stream                     |
-| snapserver | 1705 | TCP      | Snapcast control                          |
+| snapserver | 1705 | TCP      | Snapcast control (used by mpd-bridge)     |
 | snapserver | 1780 | HTTP     | Snapserver JSON-RPC API + built-in web UI |
+
+`mpd-bridge` listens on 8787 inside the Compose network only; it publishes no port.
 
 ---
 
@@ -184,7 +182,20 @@ The whole app sits behind a single shared password, checked against `ADMIN_PASSW
 
 The `restart: unless-stopped` policy (set in `docker-compose.yml`) ensures the stack comes back up after a reboot.
 
-The `/admin` page lets you reboot or shut down the Pi directly from the web UI. This requires the `svelte-mpd` container to run with `privileged: true` (already configured).
+## Deployment on a VPS
+
+The app can run on a VPS while MPD, Snapcast and the music stay on the Pi. The two halves talk only through `mpd-bridge`, published by a Cloudflare tunnel and protected by Cloudflare Access plus the bridge's own token.
+
+```
+browser ──HTTPS──▶ Caddy ─▶ svelte-mpd (VPS) ──HTTPS──▶ Cloudflare Access ─▶ tunnel ─▶ mpd-bridge (Pi) ─▶ MPD / Snapserver
+```
+
+1. **On the Pi:** run `docker-compose.pi.yml` (MPD, Snapcast, `mpd-bridge`, `cloudflared`). The [bridge README](mpd-bridge/README.md#cloudflare-setup) covers creating the tunnel, the Access application and its service token.
+2. **On the VPS:** point a DNS record at it, fill in the `.env` described at the top of `docker-compose.vps.yml` (domain, bridge URL and token, `CF_ACCESS_CLIENT_ID`/`CF_ACCESS_CLIENT_SECRET`, admin password), and run `docker compose -f docker-compose.vps.yml up -d`. Caddy obtains a Let's Encrypt certificate for the domain.
+
+Article audio is generated on the VPS, and MPD on the Pi fetches it from `https://<domain>/audio/<id>`. Those URLs carry an HMAC signature so they work without the login cookie. Set `AUDIO_URL_SECRET` to sign them with a dedicated key; otherwise the key is derived from `ADMIN_PASSWORD`, and changing the password invalidates article audio already saved in playlists.
+
+The voice client (`voice-client/`) must then point at the VPS URL instead of the Pi.
 
 ### Update notifications
 
@@ -218,14 +229,14 @@ Requires `ANTHROPIC_API_KEY` and `ASSISTANT_TOKEN`. Transcription uses OpenAI's 
 
 ## Pages
 
-| Route                | Description                                  |
-| -------------------- | -------------------------------------------- |
-| `/`                  | Current playback queue                       |
-| `/search`            | Full-library fuzzy search                    |
-| `/library`           | Music library filesystem browser             |
-| `/library/[...path]` | Nested directory navigation                  |
-| `/snap`              | Snapserver multi-room client volume control  |
-| `/admin`             | MPD database update, app version/update, system reboot/shutdown, log out |
+| Route                | Description                                                    |
+| -------------------- | -------------------------------------------------------------- |
+| `/`                  | Current playback queue                                         |
+| `/search`            | Full-library fuzzy search                                      |
+| `/library`           | Music library filesystem browser                               |
+| `/library/[...path]` | Nested directory navigation                                    |
+| `/snap`              | Snapserver multi-room client volume control                    |
+| `/admin`             | MPD database update, app version/update, log out               |
 | `/login`             | Password login screen (redirected here when not authenticated) |
 
 ### Player bar (persistent, all pages)
@@ -291,7 +302,7 @@ Requires `ANTHROPIC_API_KEY` and `ASSISTANT_TOKEN`. Transcription uses OpenAI's 
 ### Prerequisites
 
 - [Bun](https://bun.sh) 1.3+
-- A running MPD instance (local or remote)
+- A running MPD instance (local or remote) and [`mpd-bridge`](mpd-bridge/README.md) in front of it
 - (Optional) A running Snapserver instance
 
 ### Setup
@@ -303,10 +314,8 @@ bun install
 Create a `.env` file:
 
 ```env
-MPD_HOST=localhost
-MPD_PORT=6600
-SNAP_HOST=localhost
-SNAP_PORT=1780
+MPD_BRIDGE_URL=http://127.0.0.1:8787
+MPD_BRIDGE_TOKEN=<the bridge's API_TOKEN>
 ORIGIN=http://localhost:3000
 PORT=3000
 ```
@@ -328,9 +337,9 @@ If you enable the AI assistant locally, `PIPER_HOST`/`PIPER_PORT` (and `WHISPER_
 
 ### Architecture notes
 
-- **Two MPD TCP connections** — a dedicated idle connection listens for MPD subsystem events without blocking; a separate command connection handles all mutations. Both auto-reconnect with 5-second backoff (`src/lib/server/mpd.ts`).
+- **mpd-bridge** — the app never speaks the MPD protocol. `src/lib/server/bridge.ts` calls the bridge's HTTP API and keeps one SSE connection to its `/events`, which `src/lib/server/mpd.ts` relays to the browsers and reconnects with backoff (and after 60 s of silence).
 - **Remote functions** — SvelteKit's experimental `$app/server` `command`/`query` API is used instead of `+server.ts` routes, co-locating server logic with UI (`src/lib/mpd.remote.ts`).
 - **Svelte 5 runes** — the global store (`MpdStore`) is a class with `$state` properties. No legacy store API (`src/lib/mpd.svelte.ts`).
-- **In-memory MiniSearch index** — built at startup from `mpd.db.listallinfo()`, rebuilt automatically on `system-database` MPD events.
+- **In-memory MiniSearch index** — built from the bridge's `/library/all` when it connects, rebuilt on `database` events; the bridge answers `304` when the library hasn't changed.
 - **Optimistic UI** — seek bar interpolates locally between SSE updates; Snapserver sliders update immediately without waiting for RPC confirmation.
 - **SSE keepalive** — `X-Accel-Buffering: no` header prevents Nginx from buffering the event stream.

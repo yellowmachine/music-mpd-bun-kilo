@@ -1,5 +1,6 @@
 import { command, query } from '$app/server';
-import { getClient, search as searchIndex, getSearchState } from '$lib/server/mpd';
+import * as bridge from '$lib/server/bridge';
+import { search as searchIndex, getSearchState } from '$lib/server/mpd';
 import { setClientVolume, setClientMute, getClients } from '$lib/server/snap';
 import type { Song } from '$lib/server/mpd';
 import type { LibraryListing } from '$lib/mpd.types';
@@ -36,162 +37,81 @@ export interface MpdQueueItem extends MpdSong {
 // --- Queries ---
 
 export const getStatus = query(async () => {
-	const mpd = await getClient();
-	return mpd.api.status.get<MpdStatus>();
+	return (await bridge.getPlayerState()).status;
 });
 
 export const getCurrentSong = query(async () => {
-	const mpd = await getClient();
-	return mpd.api.status.currentsong<MpdSong>();
+	return (await bridge.getPlayerState()).song;
 });
 
 export const getQueue = query(async () => {
-	const mpd = await getClient();
-	return mpd.api.queue.info<MpdQueueItem>();
+	return bridge.getQueue();
 });
 
 // --- Commands (no args) ---
 
-export const play = command(async () => {
-	const mpd = await getClient();
-	await mpd.api.playback.play();
-});
-
-export const pause = command(async () => {
-	const mpd = await getClient();
-	await mpd.api.playback.pause();
-});
-
-export const resume = command(async () => {
-	const mpd = await getClient();
-	await mpd.api.playback.resume();
-});
-
-export const togglePlayback = command(async () => {
-	const mpd = await getClient();
-	await mpd.api.playback.toggle();
-});
-
-export const stop = command(async () => {
-	const mpd = await getClient();
-	await mpd.api.playback.stop();
-});
-
-export const next = command(async () => {
-	const mpd = await getClient();
-	await mpd.api.playback.next();
-});
-
-export const prev = command(async () => {
-	const mpd = await getClient();
-	await mpd.api.playback.prev();
-});
-
-export const clearQueue = command(async () => {
-	const mpd = await getClient();
-	await mpd.api.queue.clear();
-});
+export const play = command(async () => bridge.transport('play'));
+export const pause = command(async () => bridge.transport('pause'));
+export const resume = command(async () => bridge.transport('resume'));
+export const togglePlayback = command(async () => bridge.transport('toggle'));
+export const stop = command(async () => bridge.transport('stop'));
+export const next = command(async () => bridge.transport('next'));
+export const prev = command(async () => bridge.transport('previous'));
+export const clearQueue = command(async () => bridge.clearQueue());
 
 // --- Commands (with args, using "unchecked") ---
 
 export const playId = command('unchecked', async (id: number) => {
-	const mpd = await getClient();
-	await mpd.api.playback.playid(String(id));
+	await bridge.playId(id);
 });
 
 export const setVolume = command('unchecked', async (volume: number) => {
-	const mpd = await getClient();
-	await mpd.api.playback.setvol(String(volume));
+	await bridge.setVolume(volume);
 });
 
 export const seek = command('unchecked', async (seconds: number) => {
-	const mpd = await getClient();
-	await mpd.api.playback.seekcur(String(seconds));
+	await bridge.seek(seconds);
 });
 
 export const toggleRandom = command(async () => {
-	const mpd = await getClient();
-	const status = await mpd.api.status.get<MpdStatus>();
-	await mpd.api.playback.random(!status.random);
+	const { status } = await bridge.getPlayerState();
+	await bridge.setOptions({ random: !status.random });
 });
 
 export const toggleRepeat = command(async () => {
-	const mpd = await getClient();
-	const status = await mpd.api.status.get<MpdStatus>();
-	await mpd.api.playback.repeat(!status.repeat);
+	const { status } = await bridge.getPlayerState();
+	await bridge.setOptions({ repeat: !status.repeat });
 });
 
 export const toggleSingle = command(async () => {
-	const mpd = await getClient();
-	const status = await mpd.api.status.get<MpdStatus>();
-	await mpd.api.playback.single(!status.single);
+	const { status } = await bridge.getPlayerState();
+	await bridge.setOptions({ single: !status.single });
 });
 
+// An empty uri is the library root, which the bridge spells "/".
 export const addToQueue = command('unchecked', async (uri: string) => {
-	const mpd = await getClient();
-	await mpd.api.queue.add(uri);
+	await bridge.addToQueue([uri || '/']);
 });
 
 export const playNow = command('unchecked', async (uri: string) => {
-	const mpd = await getClient();
-	await mpd.api.queue.clear();
-	await mpd.api.queue.add(uri);
-	await mpd.api.playback.play();
+	await bridge.addToQueue([uri || '/'], { replace: true, play: true });
 });
 
 export const removeFromQueue = command('unchecked', async (id: number) => {
-	const mpd = await getClient();
-	await mpd.api.queue.deleteid(String(id));
+	await bridge.deleteId(id);
 });
 
 // --- Library ---
 
 export const lsinfo = query('unchecked', async (path: string): Promise<LibraryListing> => {
-	const mpd = await getClient();
-	const result = await mpd.api.db.lsinfo<{
-		directory: { directory: string }[];
-		file: Record<string, unknown>[];
-		playlist: unknown[];
-	}>(path || '');
-
-	return {
-		directories: (result.directory ?? []).map((d) => ({
-			directory: d.directory,
-			name: d.directory.split('/').at(-1) ?? d.directory
-		})),
-		files: (result.file ?? []).map((f) => ({
-			file: String(f.file ?? ''),
-			title: f.title ? String(f.title) : undefined,
-			artist: f.artist ? String(f.artist) : undefined,
-			album: f.album ? String(f.album) : undefined,
-			track: f.track ? String(f.track) : undefined,
-			date: f.date ? String(f.date) : undefined,
-			duration: f.duration ? Number(f.duration) : undefined
-		}))
-	};
+	return bridge.listInfo(path || '');
 });
 
 // --- Admin ---
 
 export const mpdUpdate = command(async () => {
-	const mpd = await getClient();
-	await mpd.api.db.update();
-	// buildIndex is triggered automatically via system-database SSE event
-});
-
-export const systemReboot = command(async () => {
-	// Small delay so the response reaches the client before the machine goes down
-	setTimeout(() => {
-		const { spawn } = require('child_process') as typeof import('child_process');
-		spawn('reboot', [], { detached: true, stdio: 'ignore' }).unref();
-	}, 500);
-});
-
-export const systemShutdown = command(async () => {
-	setTimeout(() => {
-		const { spawn } = require('child_process') as typeof import('child_process');
-		spawn('shutdown', ['now'], { detached: true, stdio: 'ignore' }).unref();
-	}, 500);
+	await bridge.updateDatabase();
+	// The search index is rebuilt when the bridge reports the database change
 });
 
 // --- Snapserver ---
@@ -203,9 +123,7 @@ export const getSnapClients = query(async () => {
 export const snapSetVolume = command(
 	'unchecked',
 	async ({ id, percent }: { id: string; percent: number }) => {
-		const clients = getClients();
-		const client = clients.find((c) => c.id === id);
-		await setClientVolume(id, percent, client?.volume.muted ?? false);
+		await setClientVolume(id, percent);
 	}
 );
 
@@ -218,10 +136,7 @@ export const snapSetMute = command(
 
 // --- Playlists (stored) ---
 
-export interface StoredPlaylist {
-	playlist: string;
-	last_modified?: string;
-}
+export type StoredPlaylist = bridge.StoredPlaylist;
 
 export interface PlaylistSong {
 	file: string;
@@ -234,60 +149,48 @@ export interface PlaylistSong {
 }
 
 export const getPlaylists = query(async () => {
-	const mpd = await getClient();
-	return mpd.api.playlists.get<StoredPlaylist>();
+	return bridge.getPlaylists();
 });
 
 export const getPlaylistSongs = query('unchecked', async (name: string) => {
-	const mpd = await getClient();
-	return mpd.api.playlists.listinfo<PlaylistSong>(name);
+	return bridge.getPlaylistSongs(name);
 });
 
 export const addSongToPlaylist = command(
 	'unchecked',
 	async ({ uri, playlist }: { uri: string; playlist: string }) => {
-		const mpd = await getClient();
-		await mpd.api.playlists.add(playlist, uri);
+		await bridge.playlistAdd(playlist, uri);
 	}
 );
 
 export const addPlaylistToQueue = command('unchecked', async (name: string) => {
-	const mpd = await getClient();
-	await mpd.api.playlists.load(name);
+	await bridge.playlistLoad(name);
 });
 
 export const playPlaylist = command('unchecked', async (name: string) => {
-	const mpd = await getClient();
-	await mpd.api.queue.clear();
-	await mpd.api.playlists.load(name);
-	await mpd.api.playback.play();
+	await bridge.playlistLoad(name, { replace: true, play: true });
 });
 
 export const removeFromPlaylist = command(
 	'unchecked',
 	async ({ playlist, pos }: { playlist: string; pos: number }) => {
-		const mpd = await getClient();
-		await mpd.api.playlists.deleteAt(playlist, String(pos));
+		await bridge.playlistDelete(playlist, pos);
 	}
 );
 
 export const moveInPlaylist = command(
 	'unchecked',
 	async ({ playlist, from, to }: { playlist: string; from: number; to: number }) => {
-		const mpd = await getClient();
-		await mpd.api.playlists.moveAt(playlist, String(from), String(to));
+		await bridge.playlistMove(playlist, from, to);
 	}
 );
 
 // --- Search ---
 
 export const searchSongs = query('unchecked', async (q: string) => {
-	// Ensure client is initialized (triggers index build on first call)
-	await getClient();
 	return searchIndex(q);
 });
 
 export const getSearchStatus = query(async () => {
-	await getClient();
 	return getSearchState();
 });

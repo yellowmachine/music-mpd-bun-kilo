@@ -1,14 +1,13 @@
 import { redirect } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
-import { startIdle, buildIndex } from '$lib/server/mpd';
-import { connectWebSocket } from '$lib/server/snap';
+import { startEvents } from '$lib/server/mpd';
 import { startPeriodicCheck } from '$lib/server/update-check';
 import { AUTH_COOKIE, sessionToken } from '$lib/server/auth';
+import { audioSignatureValid } from '$lib/server/audio-url';
 import type { Handle } from '@sveltejs/kit';
 
 export async function init() {
-	startIdle().then(() => buildIndex());
-	connectWebSocket();
+	startEvents(); // also builds the search index once the bridge connects
 	startPeriodicCheck();
 }
 
@@ -17,10 +16,17 @@ export async function init() {
 // X-Assistant-Token header instead.
 const PUBLIC_PATHS = new Set(['/login', '/api/assistant/voice']);
 
+// Article audio fetched by MPD on the Pi, which has no session cookie: the
+// URL carries a signature instead (see audio-url.ts).
+function isSignedAudio(url: URL): boolean {
+	const match = /^\/audio\/(\d+)$/.exec(url.pathname);
+	return !!match && audioSignatureValid(Number(match[1]), url.searchParams.get('sig'));
+}
+
 export const handle: Handle = async ({ event, resolve }) => {
 	const { pathname } = event.url;
 
-	if (env.ADMIN_PASSWORD && !PUBLIC_PATHS.has(pathname)) {
+	if (env.ADMIN_PASSWORD && !PUBLIC_PATHS.has(pathname) && !isSignedAudio(event.url)) {
 		const cookie = event.cookies.get(AUTH_COOKIE);
 		const authed = !!cookie && cookie === sessionToken(env.ADMIN_PASSWORD);
 

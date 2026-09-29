@@ -7,7 +7,7 @@
 
 	let { data } = $props();
 
-	const name = $derived($page.params.name);
+	const name = $derived($page.params.name ?? '');
 
 	let addingToQueue = $state(false);
 	let addedToQueue = $state(false);
@@ -69,11 +69,11 @@
 	<div class="flex items-center gap-2">
 		<a
 			href="/playlists"
-			class="text-[10px] text-[var(--color-muted)] hover:text-[var(--color-fg)] transition-colors"
+			class="text-[10px] text-[var(--color-muted)] transition-colors hover:text-[var(--color-fg)]"
 		>
 			← playlists
 		</a>
-		<span class="text-[var(--color-muted)]/40 text-[10px]">/</span>
+		<span class="text-[10px] text-[var(--color-muted)]/40">/</span>
 		<span class="text-xs font-bold">{name}</span>
 	</div>
 
@@ -127,7 +127,10 @@
 
 				{#if song.duration}
 					<span class="shrink-0 text-[10px] text-[var(--color-muted)] tabular-nums">
-						{Math.floor(song.duration / 60)}:{String(Math.floor(song.duration % 60)).padStart(2, '0')}
+						{Math.floor(song.duration / 60)}:{String(Math.floor(song.duration % 60)).padStart(
+							2,
+							'0'
+						)}
 					</span>
 				{/if}
 

@@ -1,12 +1,8 @@
-import mpdApi from 'mpd-api';
-import type { MPDApi } from 'mpd-api';
 import MiniSearch from 'minisearch';
-import { env } from '$env/dynamic/private';
-import type { MpdStatus, MpdSong, MpdQueueItem } from '$lib/mpd.types';
+import * as bridge from './bridge';
+import { setClients } from './snap';
+import type { MpdStatus, MpdSong, MpdQueueItem, SnapClient } from '$lib/mpd.types';
 export type { MpdStatus, MpdSong, MpdQueueItem } from '$lib/mpd.types';
-
-const host = env.MPD_HOST ?? 'localhost';
-const port = parseInt(env.MPD_PORT ?? '6600', 10);
 
 // --- Types ---
 
@@ -44,109 +40,90 @@ export function subscribe(fn: Subscriber): () => void {
 	return () => subscribers.delete(fn);
 }
 
-// --- Command connection (shared, used by remote functions) ---
+// --- Bridge event stream ---
+//
+// One long-lived connection to the bridge's /events, relayed to the
+// browsers' /sse streams. The bridge already emits the event names and
+// payloads the browsers expect (player, mixer, playlist, options,
+// snap_clients), so most events pass straight through.
 
-let cmdClient: MPDApi.ClientAPI | null = null;
-let cmdConnecting: Promise<MPDApi.ClientAPI> | null = null;
+// The bridge sends a heartbeat every 25 s; silence for longer than this
+// means the connection is dead even if TCP hasn't noticed.
+const STALL_TIMEOUT_MS = 60_000;
 
-export async function getClient(): Promise<MPDApi.ClientAPI> {
-	if (cmdClient) return cmdClient;
-	if (cmdConnecting) return cmdConnecting;
+let eventsStarted = false;
 
-	cmdConnecting = mpdApi.connect({ host, port }).then((c) => {
-		cmdClient = c;
-		cmdConnecting = null;
-
-		c.on('close', () => {
-			cmdClient = null;
-			cmdConnecting = null;
-		});
-		c.on('error', () => {
-			cmdClient = null;
-			cmdConnecting = null;
-		});
-
-		return c;
-	}).catch((err) => {
-		cmdConnecting = null; // allow retry on next call
-		throw err;
-	});
-
-	return cmdConnecting;
+export function startEvents() {
+	if (eventsStarted) return;
+	eventsStarted = true;
+	void eventLoop();
 }
 
-// --- Idle connection (dedicated, listens for MPD subsystem events) ---
+async function eventLoop() {
+	let failures = 0;
+	for (;;) {
+		const ac = new AbortController();
+		let stallTimer: ReturnType<typeof setTimeout> | undefined;
+		const onActivity = () => {
+			clearTimeout(stallTimer);
+			stallTimer = setTimeout(() => ac.abort(new Error('stalled')), STALL_TIMEOUT_MS);
+		};
 
-let idleClient: MPDApi.ClientAPI | null = null;
-
-async function startIdle() {
-	if (idleClient) return;
-
-	try {
-		idleClient = await mpdApi.connect({ host, port });
-	} catch (err) {
-		console.error('[mpd idle] Failed to connect:', err);
-		idleClient = null;
-		setTimeout(startIdle, 5000);
-		return;
-	}
-
-	idleClient.on('system-player', async () => {
 		try {
-			const mpd = await getClient();
-			const [status, song] = await Promise.all([
-				mpd.api.status.get<MpdStatus>(),
-				mpd.api.status.currentsong<MpdSong>()
-			]);
-			broadcast('player', { status, song });
-		} catch {}
-	});
-
-	idleClient.on('system-mixer', async () => {
-		try {
-			const mpd = await getClient();
-			const status = await mpd.api.status.get<MpdStatus>();
-			broadcast('mixer', { volume: status.volume });
-		} catch {}
-	});
-
-	idleClient.on('system-playlist', async () => {
-		try {
-			const mpd = await getClient();
-			const queue = await mpd.api.queue.info<MpdQueueItem>();
-			broadcast('playlist', { queue });
-		} catch {}
-	});
-
-	idleClient.on('system-options', async () => {
-		try {
-			const mpd = await getClient();
-			const status = await mpd.api.status.get<MpdStatus>();
-			broadcast('options', {
-				random: status.random,
-				repeat: status.repeat,
-				single: status.single,
-				consume: status.consume
+			onActivity();
+			await bridge.streamEvents(ac.signal, handleEvent, () => {
+				failures = 0;
+				onActivity();
 			});
-		} catch {}
-	});
+			console.warn('[bridge] event stream closed, reconnecting');
+		} catch (err) {
+			if (failures === 0) console.error('[bridge] event stream error:', err);
+			failures++;
+		} finally {
+			clearTimeout(stallTimer);
+			ac.abort();
+		}
 
-	idleClient.on('system-database', () => {
-		buildIndex();
-	});
-
-	idleClient.on('close', () => {
-		idleClient = null;
-		setTimeout(startIdle, 5000);
-	});
-
-	idleClient.on('error', () => {
-		idleClient = null;
-		setTimeout(startIdle, 5000);
-	});
+		broadcast('connection', { mpd: false, snap: false });
+		const delay = Math.min(30_000, 1000 * 2 ** Math.min(failures, 5));
+		await new Promise((r) => setTimeout(r, delay));
+	}
 }
 
-export { startIdle };
+function handleEvent({ event, data }: bridge.BridgeEvent) {
+	switch (event) {
+		case 'snapshot': {
+			// Sent on every (re)connect: resync the browsers and the search index.
+			const s = data as {
+				status: MpdStatus | null;
+				song: MpdSong | null;
+				queue: MpdQueueItem[];
+				snap_clients: SnapClient[];
+				connection: { mpd: boolean; snap: boolean };
+			};
+			setClients(s.snap_clients);
+			broadcast('snapshot', { status: s.status, song: s.song, queue: s.queue });
+			broadcast('snap_clients', { clients: s.snap_clients });
+			broadcast('connection', s.connection);
+			if (s.connection.mpd) buildIndex();
+			break;
+		}
+		case 'snap_clients':
+			setClients((data as { clients: SnapClient[] }).clients);
+			broadcast(event, data as object);
+			break;
+		case 'database':
+			buildIndex();
+			break;
+		case 'connection':
+			if ((data as { mpd: boolean }).mpd) buildIndex();
+			broadcast(event, data as object);
+			break;
+		default:
+			// player, mixer, playlist, options, stored_playlist
+			broadcast(event, data as object);
+	}
+}
 
 // --- Initial state snapshot (for new SSE clients) ---
 
@@ -155,19 +132,16 @@ export async function getSnapshot(): Promise<{
 	song: MpdSong | null;
 	queue: MpdQueueItem[];
 }> {
-	const mpd = await getClient();
-	const [status, song, queue] = await Promise.all([
-		mpd.api.status.get<MpdStatus>(),
-		mpd.api.status.currentsong<MpdSong>(),
-		mpd.api.queue.info<MpdQueueItem>()
-	]);
-	return { status, song: song ?? null, queue };
+	const [{ status, song }, queue] = await Promise.all([bridge.getPlayerState(), bridge.getQueue()]);
+	return { status, song, queue };
 }
 
 // --- MiniSearch ---
 
 let miniSearch: MiniSearch<Song> | null = null;
 let searchState: SearchState = { ready: false, indexing: false, total: 0 };
+let libraryEtag: string | null = null;
+let rebuildPending = false;
 
 function createIndex(): MiniSearch<Song> {
 	return new MiniSearch<Song>({
@@ -182,59 +156,38 @@ function createIndex(): MiniSearch<Song> {
 	});
 }
 
-// listallinfo returns a nested structure: [{ directory, file: [...songObjects] }, ...]
-// This flattens all nested file arrays into a single list of song objects.
-type RawDirEntry = {
-	directory?: string;
-	file?: RawFileEntry | RawFileEntry[];
-};
-type RawFileEntry = Record<string, unknown>;
-
-function flattenListallinfo(entries: RawDirEntry[]): RawFileEntry[] {
-	const result: RawFileEntry[] = [];
-	for (const entry of entries) {
-		if (!entry.file) continue;
-		const files = Array.isArray(entry.file) ? entry.file : [entry.file];
-		for (const f of files) {
-			if (f && typeof f.file === 'string') result.push(f);
-		}
-	}
-	return result;
-}
-
+// Called on every bridge (re)connect and database change. The bridge answers
+// 304 when the library hasn't changed, so this is cheap when nothing did.
 async function buildIndex(): Promise<void> {
-	if (searchState.indexing) return;
-	searchState = { ready: false, indexing: true, total: 0 };
+	if (searchState.indexing) {
+		rebuildPending = true;
+		return;
+	}
+	searchState = { ...searchState, indexing: true };
 
 	try {
-		const mpd = await getClient();
-		const raw = await mpd.api.db.listallinfo<RawDirEntry>();
-		const files = flattenListallinfo(raw);
-
-		const documents: Song[] = files.map((f) => ({
-			id: String(f.file),
-			file: String(f.file),
-			title: f.title ? String(f.title) : undefined,
-			artist: f.artist ? String(f.artist) : undefined,
-			album: f.album ? String(f.album) : undefined,
-			albumArtist: f.albumartist ? String(f.albumartist) : undefined,
-			track: f.track ? String(f.track) : undefined,
-			date: f.date ? String(f.date) : undefined,
-			duration: f.duration ? Number(f.duration) : undefined
-		}));
-
-		const index = createIndex();
-		index.addAll(documents);
-		miniSearch = index;
-		searchState = { ready: true, indexing: false, total: documents.length };
-		console.log(`[mpd] Search index built: ${documents.length} songs`);
+		const result = await bridge.getAllSongs(miniSearch ? libraryEtag : null);
+		if (result) {
+			const documents: Song[] = result.songs.map((f) => ({ id: f.file, ...f }));
+			const index = createIndex();
+			index.addAll(documents);
+			miniSearch = index;
+			libraryEtag = result.etag;
+			searchState = { ready: true, indexing: false, total: documents.length };
+			console.log(`[mpd] Search index built: ${documents.length} songs`);
+		} else {
+			searchState = { ...searchState, indexing: false };
+		}
 	} catch (err) {
 		console.error('[mpd] Failed to build search index:', err);
-		searchState = { ready: false, indexing: false, total: 0 };
+		searchState = { ...searchState, indexing: false };
+	}
+
+	if (rebuildPending) {
+		rebuildPending = false;
+		void buildIndex();
 	}
 }
-
-export { buildIndex };
 
 export function getSearchState(): SearchState {
 	return searchState;

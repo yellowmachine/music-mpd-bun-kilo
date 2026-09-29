@@ -50,7 +50,6 @@
 		"@extractus/article-extractor": "^8.1.0",
 		"fast-xml-parser": "^5.10.1",
 		"minisearch": "^7.2.0",
-		"mpd-api": "^1.1.3",
 		"phosphor-svelte": "^3.1.0"
 	}
 }

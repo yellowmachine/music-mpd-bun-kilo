@@ -53,8 +53,19 @@
 				applyStatus(data.status);
 				applyCurrentSong(data.song);
 				mpdStore.queue = data.queue;
-				mpdStore.connected = true;
+				// status is null when the server couldn't reach MPD
+				mpdStore.connected = data.status !== null;
 			} catch {}
+		});
+
+		// MPD reachability, as seen through the bridge on the Raspberry Pi
+		eventSource.addEventListener('connection', (e: MessageEvent) => {
+			try {
+				const { mpd } = JSON.parse(e.data) as { mpd: boolean };
+				mpdStore.connected = mpd;
+			} catch {
+				// ignore a malformed event
+			}
 		});
 
 		// Incremental broadcasts from idle connection

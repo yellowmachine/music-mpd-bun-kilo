@@ -12,20 +12,12 @@ COPY . .
 
 # Build args for $env/static/private — only needed at build time by svelte-kit sync
 # Real values are injected at runtime via docker-compose environment
-ARG MPD_HOST=localhost
-ARG MPD_PORT=6600
-ARG SNAP_HOST=localhost
-ARG SNAP_PORT=1780
 ARG PIPER_HOST=localhost
 ARG PIPER_PORT=5000
 ARG ORIGIN=http://localhost:3000
 ARG PORT=3000
 
-ENV MPD_HOST=$MPD_HOST \
-    MPD_PORT=$MPD_PORT \
-    SNAP_HOST=$SNAP_HOST \
-    SNAP_PORT=$SNAP_PORT \
-    PIPER_HOST=$PIPER_HOST \
+ENV PIPER_HOST=$PIPER_HOST \
     PIPER_PORT=$PIPER_PORT \
     ORIGIN=$ORIGIN \
     PORT=$PORT
