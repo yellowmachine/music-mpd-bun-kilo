@@ -3,7 +3,7 @@
 # Pi (docker-compose.pi.yml) and are reached through mpd-bridge, behind a
 # Cloudflare tunnel.
 #
-# Required variables (Dokploy: Environment tab):
+# Required variables (Dokploy: Environment tab; template in .env.vps.example):
 #   DOMAIN=music.example.com          the domain set for svelte-mpd in Dokploy
 #   ADMIN_PASSWORD=...
 #   MPD_BRIDGE_URL=https://mpd-bridge.example.com

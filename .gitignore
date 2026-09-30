@@ -16,6 +16,8 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+!.env.vps.example
+!.env.pi.example
 !.env.test
 voice-client/voice-assistant.env
 

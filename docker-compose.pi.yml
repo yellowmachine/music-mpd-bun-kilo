@@ -4,7 +4,7 @@
 # Nothing here exposes MPD or Snapserver's control API. The only published
 # port is Snapcast's audio stream (1704) for snapclients on the LAN.
 #
-# Required in .env next to this file:
+# Required in .env next to this file (template in .env.pi.example):
 #   BRIDGE_API_TOKEN=<openssl rand -hex 32>   (same value as the app's MPD_BRIDGE_TOKEN)
 #   CLOUDFLARE_TUNNEL_TOKEN=<from Zero Trust > Networks > Tunnels>
 #
