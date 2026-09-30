@@ -12,7 +12,7 @@ Built with Bun, SvelteKit 2, Svelte 5 (runes), TailwindCSS v4, and a typewriter/
 - **Fuzzy search** — instant full-library search powered by a server-side MiniSearch index
 - **Multi-room audio** — per-client volume and mute control via Snapserver
 - **Real-time sync** — SSE keeps all open browser tabs in sync (player, queue, volume, options)
-- **Admin panel** — trigger MPD database rescan, check for and apply app updates
+- **Admin panel** — trigger MPD database rescan
 - **Runs anywhere** — the app talks to MPD and Snapserver through [`mpd-bridge`](mpd-bridge/README.md), so it can live on the Pi next to the speakers or on a VPS, reaching the Pi through a Cloudflare tunnel
 - **PWA** — installable as a standalone app
 
@@ -193,26 +193,21 @@ browser ──HTTPS──▶ Traefik (Dokploy) ─▶ svelte-mpd (VPS) ──HTT
 1. **On the Pi:** run `docker-compose.pi.yml` (MPD, Snapcast, `mpd-bridge`, `cloudflared`). The [bridge README](mpd-bridge/README.md#cloudflare-setup) covers creating the tunnel, the Access application and its service token.
 2. **On the VPS (Dokploy):** point a DNS record at the VPS and create a _Compose_ service from `docker-compose.vps.yml`. Set the variables listed at the top of that file under _Environment_ (domain, bridge URL and token, `CF_ACCESS_CLIENT_ID`/`CF_ACCESS_CLIENT_SECRET`, admin password), and under _Domains_ add the domain for service `svelte-mpd`, port `3000`. Dokploy's Traefik handles HTTPS. `DOMAIN` must match that domain, since `ORIGIN` is built from it.
 
-Images are pulled on every deploy (`pull_policy: always`), and app data lives in the `app-data` named volume so it survives redeploys. There is no Watchtower on the VPS: to update, redeploy from Dokploy once CI has published the new image. `/admin` still reports when an update is available.
+Images are pulled on every deploy (`pull_policy: always`), and app data lives in the `app-data` named volume so it survives redeploys. To deploy automatically, copy the service's deploy webhook URL from Dokploy into a `DOKPLOY_WEBHOOK_URL` repository secret: the CI calls it after publishing a new app image from `main`.
 
 Article audio is generated on the VPS, and MPD on the Pi fetches it from `https://<domain>/audio/<id>`. Those URLs carry an HMAC signature so they work without the login cookie. Set `AUDIO_URL_SECRET` to sign them with a dedicated key; otherwise the key is derived from `ADMIN_PASSWORD`, and changing the password invalidates article audio already saved in playlists.
 
 The voice client (`voice-client/`) must then point at the VPS URL instead of the Pi.
 
-### Update notifications
+### Updating
 
-If you deploy with `docker-compose.prod.yml` (which pulls the pre-built `ghcr.io/yellowmachine/music-mpd-bun-kilo` image instead of building locally), the `/admin` page checks GitHub for new commits on `main` every few hours and shows a banner when the running image is out of date.
+Pull the new images and recreate the containers that changed:
 
-Applying an update is done via a [Watchtower](https://watchtower.nickfedor.com/) sidecar that only reacts to an authenticated request from the app — it does **not** poll or auto-update on its own. To enable the **Update** button:
+```sh
+docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d
+```
 
-1. Generate a random token and add it to `.env`:
-   ```env
-   WATCHTOWER_TOKEN=<a long random string, e.g. `openssl rand -hex 32`>
-   ```
-2. Start (or restart) the stack with `docker-compose.prod.yml`. This brings up a `watchtower` container with access to the Docker socket, scoped to only the `svelte-mpd` container via the `com.centurylinklabs.watchtower.enable` label.
-3. When a new version is available, click **update** on `/admin`. This pulls the new image and recreates `svelte-mpd` — playback continues uninterrupted since `mpd`/`snapserver` are separate containers; only the web UI briefly restarts.
-
-If `WATCHTOWER_TOKEN` isn't set, the version banner still works but the update button will show an error when clicked.
+The same applies to `docker-compose.pi.yml`. Playback is only interrupted if the `mpd` or `snapserver` images changed.
 
 ---
 
@@ -238,7 +233,7 @@ Requires `ANTHROPIC_API_KEY` and `ASSISTANT_TOKEN`. Transcription uses OpenAI's 
 | `/library`           | Music library filesystem browser                               |
 | `/library/[...path]` | Nested directory navigation                                    |
 | `/snap`              | Snapserver multi-room client volume control                    |
-| `/admin`             | MPD database update, app version/update, log out               |
+| `/admin`             | MPD database update, log out                                   |
 | `/login`             | Password login screen (redirected here when not authenticated) |
 
 ### Player bar (persistent, all pages)

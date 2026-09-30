@@ -1,13 +1,7 @@
 <script lang="ts">
-	import {
-		ArrowsClockwiseIcon,
-		DatabaseIcon,
-		DownloadSimpleIcon,
-		SignOutIcon
-	} from 'phosphor-svelte';
+	import { ArrowsClockwiseIcon, DatabaseIcon, SignOutIcon } from 'phosphor-svelte';
 	import { isHttpError } from '@sveltejs/kit';
 	import { mpdUpdate, getSearchStatus } from '$lib/mpd.remote';
-	import { getUpdateInfo, triggerUpdate } from '$lib/update.remote';
 
 	// Remote `command()` failures surface as HttpError (not Error), so a plain
 	// `instanceof Error` check never matches — this reads the real message either way.
@@ -24,56 +18,6 @@
 
 	// Search index status (reactive query)
 	const indexStatus = getSearchStatus();
-
-	// App version / update status
-	const updateInfo = getUpdateInfo();
-	let confirmApply = $state(false);
-	let applying = $state(false);
-	let restarting = $state(false);
-	let applyError = $state<string | null>(null);
-
-	async function handleApplyUpdate() {
-		if (applying) return;
-		applying = true;
-		applyError = null;
-		try {
-			await triggerUpdate();
-			applying = false;
-			restarting = true;
-			waitForRestart();
-		} catch (e) {
-			if (isHttpError(e)) {
-				// A clean error response from our own server — Watchtower is
-				// unreachable/misconfigured, or rejected the request outright.
-				applyError = e.body.message;
-				applying = false;
-			} else {
-				// Watchtower runs the update synchronously as part of handling
-				// /v1/update, so it kills this very container mid-request — the
-				// browser sees a raw network failure (not an HttpError) rather
-				// than a response. That failure mode means it's already working.
-				applying = false;
-				restarting = true;
-				waitForRestart();
-			}
-		}
-	}
-
-	// Polls the app until it comes back up after Watchtower recreates the
-	// container, then reloads so the page reflects the new version.
-	async function waitForRestart() {
-		await new Promise((r) => setTimeout(r, 3000)); // give the old container time to actually go down
-		while (true) {
-			try {
-				const res = await fetch('/', { method: 'HEAD', cache: 'no-store' });
-				if (res.ok) break;
-			} catch {
-				// expected while the container is down — keep polling
-			}
-			await new Promise((r) => setTimeout(r, 2000));
-		}
-		location.reload();
-	}
 
 	async function handleMpdUpdate() {
 		if (updating) return;
@@ -153,106 +97,6 @@
 			{#if updateError}
 				<p class="text-[10px] text-[var(--color-muted)]">error: {updateError}</p>
 			{/if}
-		</div>
-	</section>
-
-	<!-- App version -->
-	<section class="border border-[var(--color-border)]">
-		<div class="flex items-center gap-2 border-b border-[var(--color-border)] px-4 py-2">
-			<DownloadSimpleIcon size={13} weight="bold" />
-			<span class="text-[10px] font-bold tracking-widest uppercase">App version</span>
-		</div>
-
-		<div class="space-y-3 px-4 py-4">
-			{#await updateInfo}
-				<p class="text-[10px] text-[var(--color-muted)]">checking version...</p>
-			{:then info}
-				<div class="flex items-center justify-between text-[10px]">
-					<span class="text-[var(--color-muted)]">running</span>
-					<span class="tabular-nums">{info.current ? info.current.slice(0, 7) : 'unknown'}</span>
-				</div>
-
-				{#if info.error}
-					<p class="text-[10px] text-[var(--color-muted)]">
-						could not check for updates: {info.error}
-					</p>
-				{:else if !info.current}
-					<p class="text-[10px] text-[var(--color-muted)]">
-						image was not built with GIT_SHA — update checks disabled
-					</p>
-				{:else if info.latest}
-					<div class="flex items-center justify-between text-[10px]">
-						<span class="text-[var(--color-muted)]">latest (main)</span>
-						<span class="tabular-nums">{info.latest.slice(0, 7)}</span>
-					</div>
-				{/if}
-
-				{#if restarting}
-					<div class="flex items-center gap-2 pt-1">
-						<ArrowsClockwiseIcon size={11} weight="bold" class="animate-spin" />
-						<p class="text-[10px] text-[var(--color-muted)]">
-							restarting — waiting for the app to come back online, this page will reload
-							automatically...
-						</p>
-					</div>
-				{:else if info.updateAvailable && !info.canApply}
-					<div class="space-y-0.5 pt-1">
-						<p class="text-xs font-bold">Update available</p>
-						<p class="text-[10px] text-[var(--color-muted)]">
-							Redeploy the app (e.g. from Dokploy) to apply it
-						</p>
-					</div>
-				{:else if info.updateAvailable}
-					<div class="flex items-center justify-between pt-1">
-						<div class="space-y-0.5">
-							<p class="text-xs font-bold">Update available</p>
-							<p class="text-[10px] text-[var(--color-muted)]">
-								Pulls the new image and restarts the app (playback is unaffected)
-							</p>
-						</div>
-						{#if confirmApply}
-							<div class="flex shrink-0 items-center gap-2">
-								<span class="text-[10px] text-[var(--color-muted)]">sure?</span>
-								<button
-									onclick={handleApplyUpdate}
-									disabled={applying}
-									class="border border-[var(--color-border)] bg-[var(--color-fg)] px-3 py-1.5
-										text-[10px] tracking-wider text-[var(--color-accent-fg)] uppercase
-										disabled:opacity-40"
-								>
-									{applying ? 'updating...' : 'yes, update'}
-								</button>
-								{#if !applying}
-									<button
-										onclick={() => (confirmApply = false)}
-										class="text-[10px] text-[var(--color-muted)] hover:text-[var(--color-fg)]"
-									>
-										cancel
-									</button>
-								{/if}
-							</div>
-						{:else}
-							<button
-								onclick={() => (confirmApply = true)}
-								class="flex shrink-0 items-center gap-1.5 border border-[var(--color-border)] px-3 py-1.5
-									text-[10px] tracking-wider uppercase transition-colors
-									hover:bg-[var(--color-fg)] hover:text-[var(--color-accent-fg)]"
-							>
-								<DownloadSimpleIcon size={11} weight="bold" />
-								update
-							</button>
-						{/if}
-					</div>
-				{:else if info.current && !info.error}
-					<p class="text-[10px] text-[var(--color-muted)]">up to date</p>
-				{/if}
-
-				{#if applyError}
-					<p class="text-[10px] text-[var(--color-muted)]">error: {applyError}</p>
-				{/if}
-			{:catch}
-				<p class="text-[10px] text-[var(--color-muted)]">could not fetch version info</p>
-			{/await}
 		</div>
 	</section>
 

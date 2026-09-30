@@ -1,14 +1,12 @@
 import { redirect } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { startEvents } from '$lib/server/mpd';
-import { startPeriodicCheck } from '$lib/server/update-check';
 import { AUTH_COOKIE, sessionToken } from '$lib/server/auth';
 import { audioSignatureValid } from '$lib/server/audio-url';
 import type { Handle } from '@sveltejs/kit';
 
 export async function init() {
 	startEvents(); // also builds the search index once the bridge connects
-	startPeriodicCheck();
 }
 
 // Paths reachable without a session cookie: the login page itself, and the

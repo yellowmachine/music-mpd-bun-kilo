@@ -50,8 +50,6 @@ services:
 
   mpd-bridge:
     image: ghcr.io/yellowmachine/music-mpd-bun-kilo-mpd-bridge:latest
-    labels:
-      - 'com.centurylinklabs.watchtower.enable=true'
     environment:
       MPD_HOST: mpd
       SNAP_HOST: snapserver
@@ -64,8 +62,6 @@ services:
 
   svelte-mpd:
     image: ghcr.io/yellowmachine/music-mpd-bun-kilo:latest
-    labels:
-      - 'com.centurylinklabs.watchtower.enable=true'
     environment:
       NODE_ENV: production
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
@@ -75,8 +71,6 @@ services:
       PIPER_PORT: '5000'
       ORIGIN: ${ORIGIN}
       PORT: '3000'
-      WATCHTOWER_URL: http://watchtower:8080
-      WATCHTOWER_TOKEN: ${WATCHTOWER_TOKEN}
       WHISPER_HOST: whisper
       WHISPER_PORT: '5001'
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
@@ -113,23 +107,6 @@ services:
     ports:
       - '80:80'
       - '443:443'
-
-  # Sidecar that applies updates on demand — triggered from the app's /admin
-  # page via its HTTP API. Does NOT poll or auto-update on its own; it only
-  # reacts to the authenticated request svelte-mpd sends.
-  watchtower:
-    # containrrr/watchtower is unmaintained and ships a Docker client too old
-    # for recent Docker daemons ("client version 1.25 is too old"); use the
-    # maintained fork instead.
-    image: nickfedor/watchtower
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      WATCHTOWER_HTTP_API_UPDATE: 'true'
-      WATCHTOWER_HTTP_API_TOKEN: ${WATCHTOWER_TOKEN}
-      WATCHTOWER_LABEL_ENABLE: 'true'
-      WATCHTOWER_CLEANUP: 'true'
-    restart: unless-stopped
 
 volumes:
   shared-fifo:
