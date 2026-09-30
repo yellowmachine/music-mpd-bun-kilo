@@ -7,6 +7,8 @@
 # Required in .env next to this file (template in .env.pi.example):
 #   BRIDGE_API_TOKEN=<openssl rand -hex 32>   (same value as the app's MPD_BRIDGE_TOKEN)
 #   CLOUDFLARE_TUNNEL_TOKEN=<from Zero Trust > Networks > Tunnels>
+#   BRIDGE_UPDATE_TOKEN=<openssl rand -hex 32> (a different one; the MPD_BRIDGE_UPDATE_TOKEN GitHub secret)
+#   WATCHTOWER_TOKEN=<openssl rand -hex 32>    (only the bridge and watchtower use it, internally)
 #
 # Run: docker compose -f docker-compose.pi.yml up -d
 
@@ -63,6 +65,13 @@ services:
       # `ports`, so it is not reachable from the host or the LAN.
       LISTEN_ADDR: 0.0.0.0:8787
       API_TOKEN: ${BRIDGE_API_TOKEN:?set BRIDGE_API_TOKEN in .env}
+      # POST /admin/update, called by CI after it publishes a new image.
+      UPDATE_TOKEN: ${BRIDGE_UPDATE_TOKEN:?set BRIDGE_UPDATE_TOKEN in .env}
+      WATCHTOWER_URL: http://watchtower:8080
+      WATCHTOWER_TOKEN: ${WATCHTOWER_TOKEN:?set WATCHTOWER_TOKEN in .env}
+    labels:
+      # Watchtower only updates containers with this label.
+      - com.centurylinklabs.watchtower.enable=true
     depends_on:
       mpd:
         condition: service_healthy
@@ -81,6 +90,23 @@ services:
       TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env}
     depends_on:
       - mpd-bridge
+    restart: unless-stopped
+
+  # Updates the bridge when it asks (the CI webhook) and, in case a webhook is
+  # missed, once a day on its own. It is the only container with the Docker
+  # socket, and it has no ports and no tunnel route: only the bridge reaches it.
+  # This is the maintained fork of containrrr/watchtower (archived in 2025).
+  watchtower:
+    image: nickfedor/watchtower:1
+    environment:
+      WATCHTOWER_HTTP_API_ENDPOINTS: update
+      WATCHTOWER_HTTP_API_TOKEN: ${WATCHTOWER_TOKEN:?set WATCHTOWER_TOKEN in .env}
+      WATCHTOWER_HTTP_API_PERIODIC_POLLS: 'true'
+      WATCHTOWER_POLL_INTERVAL: '86400'
+      WATCHTOWER_LABEL_ENABLE: 'true'
+      WATCHTOWER_CLEANUP: 'true'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
 
 volumes:

@@ -30,6 +30,11 @@ VPS (svelte-mpd) ──HTTPS──▶ Cloudflare Access ──tunnel──▶ cl
 | `SNAP_HOST`      | `127.0.0.1`      |                                                                         |
 | `SNAP_PORT`      | `1705`           | Snapserver's TCP control port (not the 1780 HTTP one).                  |
 | `LOG_LEVEL`      | `info`           | `debug` also logs `/healthz` requests.                                  |
+| `UPDATE_TOKEN`   | —                | Enables `POST /admin/update`. At least 32 characters, different from `API_TOKEN`. |
+| `UPDATE_TOKEN_FILE` | —             | Read it from a file. Use one or the other.                              |
+| `WATCHTOWER_URL` | `http://watchtower:8080` | Watchtower's HTTP API, on the internal network. Only with `UPDATE_TOKEN`. |
+| `WATCHTOWER_TOKEN` | —              | Watchtower's `WATCHTOWER_HTTP_API_TOKEN`. Required with `UPDATE_TOKEN`. |
+| `WATCHTOWER_TOKEN_FILE` | —         | Read it from a file. Use one or the other.                              |
 
 ## Endpoints
 
@@ -120,6 +125,17 @@ After that, the stream sends the same event names the app already uses internall
 A `: ping` comment is sent every 25 s so the tunnel keeps the connection open.
 A client that falls behind is disconnected. When it reconnects, it gets a fresh snapshot.
 
+**Update webhook**
+
+`POST /admin/update` exists only when `UPDATE_TOKEN` is set, and it takes that
+token instead of `API_TOKEN`. The app's token can't call it, and this token
+can't call anything else. It takes no input. It asks Watchtower to check for
+new images of the containers labelled `com.centurylinklabs.watchtower.enable=true`,
+and answers `202` once Watchtower has started, before the bridge gets
+restarted. `409` means an update is already running, and `503` means
+Watchtower isn't reachable. It is not the same as `POST /library/update`,
+which rescans the music database.
+
 ### Examples
 
 ```sh
@@ -143,13 +159,16 @@ curl "${AUTH[@]}" -N $B/events
 
 - mpd, snapserver and snapclient;
 - this bridge, with no published ports;
-- `cloudflared`.
+- `cloudflared`;
+- Watchtower, for [automatic updates](#automatic-updates).
 
-Put the two secrets in `.env`, next to that file:
+Put the secrets in `.env`, next to that file:
 
 ```env
 BRIDGE_API_TOKEN=<openssl rand -hex 32>
 CLOUDFLARE_TUNNEL_TOKEN=<tunnel token>
+BRIDGE_UPDATE_TOKEN=<openssl rand -hex 32>
+WATCHTOWER_TOKEN=<openssl rand -hex 32>
 ```
 
 ### Cloudflare setup
@@ -169,6 +188,36 @@ CLOUDFLARE_TUNNEL_TOKEN=<tunnel token>
 
 On the VPS, the app needs the bridge URL, `API_TOKEN` and the two
 `CF-Access-*` values.
+
+### Automatic updates
+
+```
+CI ──▶ Cloudflare Access ──tunnel──▶ mpd-bridge  POST /admin/update
+                                         │  (compose network)
+                                         ▼
+                                    watchtower :8080  ──▶ pulls from GHCR, restarts the bridge
+```
+
+After `docker-build.yml` publishes the bridge image on `main`, the `update-pi`
+job waits until `:latest` resolves to the new digest and calls
+`POST /admin/update`. Watchtower runs
+[`nickfedor/watchtower`](https://github.com/nicholas-fedor/watchtower), the
+maintained fork, since `containrrr/watchtower` was archived in 2025. It is the
+only container with the Docker socket. It has no ports and no tunnel route, so
+only the bridge can reach it. It only touches labelled containers, which is
+just the bridge for now, so an update never interrupts MPD or Snapcast. As a
+fallback, it also checks for new images once a day.
+
+Put `BRIDGE_UPDATE_TOKEN` and `WATCHTOWER_TOKEN` in the Pi's `.env` (see
+`.env.pi.example`). The job needs these repository secrets, and without the
+first two it skips the call:
+
+- `MPD_BRIDGE_URL`: the tunnel hostname.
+- `MPD_BRIDGE_UPDATE_TOKEN`: the same value as `BRIDGE_UPDATE_TOKEN` on the Pi.
+- `CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET`: a service token allowed by
+  the Access application. A separate one for CI is best, so you can revoke it on its own.
+
+The image in GHCR must be public, or Watchtower needs registry credentials to pull it.
 
 ### Rotating the token
 
@@ -193,6 +242,7 @@ Layout:
 - `internal/httpapi`: routes, validation and SSE.
 - `internal/feed`: turns MPD and Snapcast changes into events.
 - `internal/events`: fan-out to the SSE subscribers.
+- `internal/watchtower`: triggers Watchtower updates.
 
 ### Why not gompd?
 

@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -17,6 +18,7 @@ import (
 	"github.com/yellowmachine/music-mpd-bun-kilo/mpd-bridge/internal/events"
 	"github.com/yellowmachine/music-mpd-bun-kilo/mpd-bridge/internal/mpd"
 	"github.com/yellowmachine/music-mpd-bun-kilo/mpd-bridge/internal/snap"
+	"github.com/yellowmachine/music-mpd-bun-kilo/mpd-bridge/internal/watchtower"
 )
 
 const token = "test-token-0123456789abcdef0123456789"
@@ -129,7 +131,7 @@ type harness struct {
 func newHarness() *harness {
 	h := &harness{mpd: &fakeMPD{stamp: 1700000000}, snap: &fakeSnap{}, broker: events.NewBroker(4, nil)}
 	s := New(Options{MPD: h.mpd, Snap: h.snap, Broker: h.broker, Heartbeat: 20 * time.Millisecond})
-	h.h = s.Handler(token)
+	h.h = s.Handler(token, "")
 	return h
 }
 
@@ -491,5 +493,51 @@ func TestEventsStream(t *testing.T) {
 
 	h.broker.Close() // shutdown ends the stream
 	for range lines {
+	}
+}
+
+type fakeUpdater struct {
+	calls int
+	err   error
+}
+
+func (u *fakeUpdater) TriggerUpdate(ctx context.Context) error {
+	u.calls++
+	return u.err
+}
+
+func TestUpdateWebhook(t *testing.T) {
+	const updateToken = "update-token-0123456789abcdef012345"
+	bearer := func(tok string) []string { return []string{"Authorization", "Bearer " + tok} }
+
+	if rec := newHarness().do("POST", "/admin/update", ""); rec.Code != http.StatusNotFound {
+		t.Errorf("disabled: %d", rec.Code)
+	}
+
+	u := &fakeUpdater{}
+	h := newHarness()
+	h.h = New(Options{MPD: h.mpd, Snap: h.snap, Updater: u, Broker: h.broker}).Handler(token, updateToken)
+	if rec := h.do("POST", "/admin/update", ""); rec.Code != http.StatusUnauthorized {
+		t.Errorf("app token: %d", rec.Code)
+	}
+	if rec := h.do("GET", "/status", "", bearer(updateToken)...); rec.Code != http.StatusUnauthorized {
+		t.Errorf("update token on the API: %d", rec.Code)
+	}
+	if rec := h.do("POST", "/admin/update", "", bearer(updateToken)...); rec.Code != http.StatusAccepted || u.calls != 1 {
+		t.Errorf("update: %d, %d calls", rec.Code, u.calls)
+	}
+	if rec := h.do("POST", "/library/update", ""); rec.Code != http.StatusAccepted {
+		t.Errorf("library update still works: %d", rec.Code)
+	}
+
+	for err, want := range map[error]int{
+		watchtower.ErrBusy:        http.StatusConflict,
+		watchtower.ErrUnavailable: http.StatusServiceUnavailable,
+		errors.New("boom"):        http.StatusBadGateway,
+	} {
+		u.err = err
+		if rec := h.do("POST", "/admin/update", "", bearer(updateToken)...); rec.Code != want {
+			t.Errorf("%v: got %d, want %d", err, rec.Code, want)
+		}
 	}
 }

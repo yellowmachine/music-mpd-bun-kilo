@@ -38,6 +38,11 @@ type MPD interface {
 	PlaylistLoad(ctx context.Context, name string, replace, play bool) error
 }
 
+// Updater triggers an update of the bridge's own image (Watchtower).
+type Updater interface {
+	TriggerUpdate(ctx context.Context) error
+}
+
 // Snap is what the handlers need from the Snapcast client.
 type Snap interface {
 	Available() bool
@@ -48,6 +53,7 @@ type Snap interface {
 type Server struct {
 	mpd       MPD
 	snap      Snap
+	updater   Updater // nil disables POST /admin/update
 	broker    *events.Broker
 	log       *slog.Logger
 	lib       libraryCache
@@ -55,10 +61,12 @@ type Server struct {
 }
 
 type Options struct {
-	MPD    MPD
-	Snap   Snap
-	Broker *events.Broker
-	Logger *slog.Logger
+	MPD  MPD
+	Snap Snap
+	// Updater, when set, enables POST /admin/update.
+	Updater Updater
+	Broker  *events.Broker
+	Logger  *slog.Logger
 	// Heartbeat is the SSE keep-alive interval; Cloudflare closes idle
 	// connections after 100 s.
 	Heartbeat time.Duration
@@ -71,11 +79,13 @@ func New(o Options) *Server {
 	if o.Logger == nil {
 		o.Logger = slog.Default()
 	}
-	return &Server{mpd: o.MPD, snap: o.Snap, broker: o.Broker, log: o.Logger, heartbeat: o.Heartbeat}
+	return &Server{mpd: o.MPD, snap: o.Snap, updater: o.Updater, broker: o.Broker, log: o.Logger, heartbeat: o.Heartbeat}
 }
 
-// Handler returns the full handler chain: request logging, then auth, then routes.
-func (s *Server) Handler(token string) http.Handler {
+// Handler returns the full handler chain: request logging, then auth, then
+// routes. POST /admin/update takes updateToken instead of token, so the app's
+// token can't trigger updates; it only exists when an Updater is set.
+func (s *Server) Handler(token, updateToken string) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /healthz", s.healthz)
@@ -110,7 +120,13 @@ func (s *Server) Handler(token string) http.Handler {
 	mux.HandleFunc("GET /events", s.events)
 
 	public := func(r *http.Request) bool { return r.Method == http.MethodGet && r.URL.Path == "/healthz" }
-	return s.logRequests(auth.Middleware(token, public, mux))
+	root := http.NewServeMux()
+	root.Handle("/", auth.Middleware(token, public, mux))
+	if s.updater != nil {
+		never := func(*http.Request) bool { return false }
+		root.Handle("POST /admin/update", auth.Middleware(updateToken, never, http.HandlerFunc(s.selfUpdate)))
+	}
+	return s.logRequests(root)
 }
 
 // logRequests logs one line per request. It never logs headers, so the

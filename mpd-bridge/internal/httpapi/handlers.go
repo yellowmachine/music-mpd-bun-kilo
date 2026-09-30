@@ -17,6 +17,7 @@ import (
 
 	"github.com/yellowmachine/music-mpd-bun-kilo/mpd-bridge/internal/mpd"
 	"github.com/yellowmachine/music-mpd-bun-kilo/mpd-bridge/internal/snap"
+	"github.com/yellowmachine/music-mpd-bun-kilo/mpd-bridge/internal/watchtower"
 )
 
 const (
@@ -490,4 +491,25 @@ func (s *Server) snapVolume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.done(w, r, s.snap.SetVolume(r.Context(), id, body.Percent, body.Muted))
+}
+
+// selfUpdate asks Watchtower to pull new images of the bridge (and anything else
+// it watches). It takes no input: the caller can only say "check now".
+func (s *Server) selfUpdate(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+	err := s.updater.TriggerUpdate(ctx)
+	switch {
+	case err == nil:
+		s.log.Info("update triggered")
+		writeJSON(w, http.StatusAccepted, map[string]string{"status": "update started"})
+	case errors.Is(err, watchtower.ErrBusy):
+		errorJSON(w, http.StatusConflict, "an update is already running")
+	case errors.Is(err, watchtower.ErrUnavailable):
+		s.log.Error("watchtower unavailable", "err", err)
+		errorJSON(w, http.StatusServiceUnavailable, "watchtower unavailable")
+	default:
+		s.log.Error("update failed", "err", err)
+		errorJSON(w, http.StatusBadGateway, "watchtower error")
+	}
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/yellowmachine/music-mpd-bun-kilo/mpd-bridge/internal/httpapi"
 	"github.com/yellowmachine/music-mpd-bun-kilo/mpd-bridge/internal/mpd"
 	"github.com/yellowmachine/music-mpd-bun-kilo/mpd-bridge/internal/snap"
+	"github.com/yellowmachine/music-mpd-bun-kilo/mpd-bridge/internal/watchtower"
 )
 
 // maxEventStreams caps concurrent /events connections; normally only the
@@ -76,10 +77,15 @@ func run() int {
 	wg.Go(func() { mpdClient.Watch(ctx, feed.Subsystems, fd.Resync, fd.MPDChanged) })
 	wg.Go(func() { snapClient.Run(ctx) })
 
-	api := httpapi.New(httpapi.Options{MPD: mpdClient, Snap: snapClient, Broker: broker, Logger: log})
+	var updater httpapi.Updater
+	if cfg.UpdateToken != "" {
+		updater = watchtower.New(cfg.WatchtowerURL, cfg.WatchtowerToken)
+	}
+
+	api := httpapi.New(httpapi.Options{MPD: mpdClient, Snap: snapClient, Updater: updater, Broker: broker, Logger: log})
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,
-		Handler:           api.Handler(cfg.Token),
+		Handler:           api.Handler(cfg.Token, cfg.UpdateToken),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      75 * time.Second, // > the 60 s /library/all budget; /events lifts it
@@ -90,7 +96,7 @@ func run() int {
 
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- srv.ListenAndServe() }()
-	log.Info("listening", "addr", cfg.ListenAddr, "mpd", cfg.MPDAddr, "snap", cfg.SnapAddr)
+	log.Info("listening", "addr", cfg.ListenAddr, "mpd", cfg.MPDAddr, "snap", cfg.SnapAddr, "update_webhook", updater != nil)
 
 	code := 0
 	select {
