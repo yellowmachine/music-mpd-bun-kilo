@@ -195,6 +195,13 @@
 							automatically...
 						</p>
 					</div>
+				{:else if info.updateAvailable && !info.canApply}
+					<div class="space-y-0.5 pt-1">
+						<p class="text-xs font-bold">Update available</p>
+						<p class="text-[10px] text-[var(--color-muted)]">
+							Redeploy the app (e.g. from Dokploy) to apply it
+						</p>
+					</div>
 				{:else if info.updateAvailable}
 					<div class="flex items-center justify-between pt-1">
 						<div class="space-y-0.5">

@@ -4,7 +4,10 @@ import { env } from '$env/dynamic/private';
 import { getUpdateStatus } from '$lib/server/update-check';
 
 export const getUpdateInfo = query(async () => {
-	return await getUpdateStatus();
+	// Without Watchtower (e.g. on the VPS, where Dokploy redeploys the app)
+	// the update can only be reported, not applied from here.
+	const canApply = Boolean(env.WATCHTOWER_URL && env.WATCHTOWER_TOKEN);
+	return { ...(await getUpdateStatus()), canApply };
 });
 
 export const triggerUpdate = command(async () => {

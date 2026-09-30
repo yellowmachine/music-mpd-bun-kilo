@@ -187,11 +187,13 @@ The `restart: unless-stopped` policy (set in `docker-compose.yml`) ensures the s
 The app can run on a VPS while MPD, Snapcast and the music stay on the Pi. The two halves talk only through `mpd-bridge`, published by a Cloudflare tunnel and protected by Cloudflare Access plus the bridge's own token.
 
 ```
-browser ──HTTPS──▶ your proxy ─▶ svelte-mpd (VPS) ──HTTPS──▶ Cloudflare Access ─▶ tunnel ─▶ mpd-bridge (Pi) ─▶ MPD / Snapserver
+browser ──HTTPS──▶ Traefik (Dokploy) ─▶ svelte-mpd (VPS) ──HTTPS──▶ Cloudflare Access ─▶ tunnel ─▶ mpd-bridge (Pi) ─▶ MPD / Snapserver
 ```
 
 1. **On the Pi:** run `docker-compose.pi.yml` (MPD, Snapcast, `mpd-bridge`, `cloudflared`). The [bridge README](mpd-bridge/README.md#cloudflare-setup) covers creating the tunnel, the Access application and its service token.
-2. **On the VPS:** point a DNS record at it, fill in the `.env` described at the top of `docker-compose.vps.yml` (domain, bridge URL and token, `CF_ACCESS_CLIENT_ID`/`CF_ACCESS_CLIENT_SECRET`, admin password), and run `docker compose -f docker-compose.vps.yml up -d`. The app listens on port 3000; serve it over HTTPS at `https://<domain>` with your own reverse proxy (`ORIGIN` must match that URL).
+2. **On the VPS (Dokploy):** point a DNS record at the VPS and create a _Compose_ service from `docker-compose.vps.yml`. Set the variables listed at the top of that file under _Environment_ (domain, bridge URL and token, `CF_ACCESS_CLIENT_ID`/`CF_ACCESS_CLIENT_SECRET`, admin password), and under _Domains_ add the domain for service `svelte-mpd`, port `3000`. Dokploy's Traefik handles HTTPS. `DOMAIN` must match that domain, since `ORIGIN` is built from it.
+
+Images are pulled on every deploy (`pull_policy: always`), and app data lives in the `app-data` named volume so it survives redeploys. There is no Watchtower on the VPS: to update, redeploy from Dokploy once CI has published the new image. `/admin` still reports when an update is available.
 
 Article audio is generated on the VPS, and MPD on the Pi fetches it from `https://<domain>/audio/<id>`. Those URLs carry an HMAC signature so they work without the login cookie. Set `AUDIO_URL_SECRET` to sign them with a dedicated key; otherwise the key is derived from `ADMIN_PASSWORD`, and changing the password invalidates article audio already saved in playlists.
 

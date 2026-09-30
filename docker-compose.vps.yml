@@ -1,31 +1,34 @@
-# VPS stack: the web app plus the services that don't need to be near the
-# speakers. MPD and Snapcast stay on the Raspberry Pi (docker-compose.pi.yml)
-# and are reached through mpd-bridge, behind a Cloudflare tunnel.
+# VPS stack (deployed with Dokploy): the web app plus the services that
+# don't need to be near the speakers. MPD and Snapcast stay on the Raspberry
+# Pi (docker-compose.pi.yml) and are reached through mpd-bridge, behind a
+# Cloudflare tunnel.
 #
-# Required in .env next to this file:
-#   DOMAIN=music.example.com          public hostname your reverse proxy serves
+# Required variables (Dokploy: Environment tab):
+#   DOMAIN=music.example.com          the domain set for svelte-mpd in Dokploy
 #   ADMIN_PASSWORD=...
 #   MPD_BRIDGE_URL=https://mpd-bridge.example.com
 #   MPD_BRIDGE_TOKEN=...              same value as BRIDGE_API_TOKEN on the Pi
 #   CF_ACCESS_CLIENT_ID=...           Cloudflare Access service token
 #   CF_ACCESS_CLIENT_SECRET=...
-#   WATCHTOWER_TOKEN=...
 # Optional: ANTHROPIC_API_KEY, ASSISTANT_TOKEN, OPENAI_API_KEY, AUDIO_URL_SECRET
 #
-# Run: docker compose -f docker-compose.vps.yml up -d
+# In Dokploy: create a Compose service from this file, set the variables
+# above under Environment, and add the domain under Domains pointing at
+# service svelte-mpd, port 3000. Dokploy's Traefik terminates HTTPS, so no
+# port is published here.
 
 services:
   svelte-mpd:
     image: ghcr.io/yellowmachine/music-mpd-bun-kilo:latest
-    labels:
-      - 'com.centurylinklabs.watchtower.enable=true'
+    # Redeploying pulls the newest image instead of reusing the cached :latest.
+    pull_policy: always
     environment:
       NODE_ENV: production
-      ORIGIN: https://${DOMAIN:?set DOMAIN in .env}
+      ORIGIN: https://${DOMAIN:?set DOMAIN}
       PORT: '3000'
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
-      MPD_BRIDGE_URL: ${MPD_BRIDGE_URL:?set MPD_BRIDGE_URL in .env}
-      MPD_BRIDGE_TOKEN: ${MPD_BRIDGE_TOKEN:?set MPD_BRIDGE_TOKEN in .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD}
+      MPD_BRIDGE_URL: ${MPD_BRIDGE_URL:?set MPD_BRIDGE_URL}
+      MPD_BRIDGE_TOKEN: ${MPD_BRIDGE_TOKEN:?set MPD_BRIDGE_TOKEN}
       CF_ACCESS_CLIENT_ID: ${CF_ACCESS_CLIENT_ID}
       CF_ACCESS_CLIENT_SECRET: ${CF_ACCESS_CLIENT_SECRET}
       # Signs article audio URLs that MPD on the Pi fetches from this app.
@@ -38,35 +41,26 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ASSISTANT_TOKEN: ${ASSISTANT_TOKEN:-}
-      WATCHTOWER_URL: http://watchtower:8080
-      WATCHTOWER_TOKEN: ${WATCHTOWER_TOKEN}
     volumes:
-      - ./podcasts-data:/app/data
+      # Named volume: survives redeploys (Dokploy re-clones the repo, so a
+      # ./ bind mount would not).
+      - app-data:/app/data
+    expose:
+      - '3000'
     depends_on:
       - piper
       - whisper
     restart: unless-stopped
-    # Serve it over HTTPS with your own reverse proxy at https://$DOMAIN;
-    # ORIGIN must match that public URL.
-    ports:
-      - '3000:3000'
 
   piper:
     image: ghcr.io/yellowmachine/music-mpd-bun-kilo-piper:latest
+    pull_policy: always
     restart: unless-stopped
 
   whisper:
     image: ghcr.io/yellowmachine/music-mpd-bun-kilo-whisper:latest
+    pull_policy: always
     restart: unless-stopped
 
-  # Applies app updates on demand, triggered from /admin (see docker-compose.prod.yml).
-  watchtower:
-    image: nickfedor/watchtower
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      WATCHTOWER_HTTP_API_UPDATE: 'true'
-      WATCHTOWER_HTTP_API_TOKEN: ${WATCHTOWER_TOKEN}
-      WATCHTOWER_LABEL_ENABLE: 'true'
-      WATCHTOWER_CLEANUP: 'true'
-    restart: unless-stopped
+volumes:
+  app-data:
