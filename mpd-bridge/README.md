@@ -158,7 +158,7 @@ curl "${AUTH[@]}" -N $B/events
 `docker-compose.pi.yml` at the repo root runs the full Pi stack:
 
 - mpd, snapserver and snapclient;
-- this bridge, published on `127.0.0.1:8787` only;
+- this bridge, published on `127.0.0.1:8788` only (change it with `BRIDGE_PORT` in `.env`);
 - Watchtower, for [automatic updates](#automatic-updates).
 
 Put the secrets in `.env`, next to that file:
@@ -174,7 +174,7 @@ WATCHTOWER_TOKEN=<openssl rand -hex 32>
 1. **Tunnel.** `cloudflared` is not part of the compose stack; run it on the Pi
    however you prefer. In Zero Trust → Networks → Tunnels, add a
    *public hostname* to the tunnel, for example `mpd-bridge.example.com`, with
-   service `http://127.0.0.1:8787`.
+   service `http://127.0.0.1:8788` (or your `BRIDGE_PORT`).
 2. **Service token.** Go to Zero Trust → Access → Service Auth → Service Tokens
    and create one. Keep its Client ID and Secret for the app on the VPS.
 3. **Access application.** Go to Zero Trust → Access → Applications and add a

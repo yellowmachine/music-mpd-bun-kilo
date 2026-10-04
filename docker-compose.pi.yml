@@ -1,6 +1,7 @@
 # Raspberry Pi stack once the web app runs on the VPS: audio services plus
 # mpd-bridge, reached from the VPS only through a Cloudflare tunnel. cloudflared
-# is managed outside this stack; point the tunnel at http://127.0.0.1:8787.
+# is managed outside this stack; point the tunnel at http://127.0.0.1:8788
+# (or the BRIDGE_PORT set in .env).
 #
 # Nothing here exposes MPD or Snapserver's control API. The bridge is published
 # on loopback only, and the only port open to the LAN is Snapcast's audio
@@ -69,8 +70,9 @@ services:
       WATCHTOWER_URL: http://watchtower:8080
       WATCHTOWER_TOKEN: ${WATCHTOWER_TOKEN:?set WATCHTOWER_TOKEN in .env}
     # Loopback only: reachable by cloudflared on the Pi, not from the LAN.
+    # 8788 by default because 8787 is taken on the Pi by another app's bridge.
     ports:
-      - '127.0.0.1:8787:8787'
+      - '127.0.0.1:${BRIDGE_PORT:-8788}:8787'
     labels:
       # Watchtower only updates containers with this label.
       - com.centurylinklabs.watchtower.enable=true
