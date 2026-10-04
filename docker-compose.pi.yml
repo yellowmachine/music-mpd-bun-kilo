@@ -74,8 +74,9 @@ services:
     ports:
       - '127.0.0.1:${BRIDGE_PORT:-8788}:8787'
     labels:
-      # Watchtower only updates containers with this label.
+      # Watchtower only updates containers with this label, in its scope.
       - com.centurylinklabs.watchtower.enable=true
+      - com.centurylinklabs.watchtower.scope=mpd
     depends_on:
       mpd:
         condition: service_healthy
@@ -97,6 +98,12 @@ services:
       WATCHTOWER_POLL_INTERVAL: '86400'
       WATCHTOWER_LABEL_ENABLE: 'true'
       WATCHTOWER_CLEANUP: 'true'
+      # Other stacks on the Pi (cartoons) run their own Watchtower. Without a
+      # scope, each instance stops the others on startup and updates their
+      # labelled containers too.
+      WATCHTOWER_SCOPE: mpd
+    labels:
+      - com.centurylinklabs.watchtower.scope=mpd
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
