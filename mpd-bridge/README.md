@@ -158,26 +158,23 @@ curl "${AUTH[@]}" -N $B/events
 `docker-compose.pi.yml` at the repo root runs the full Pi stack:
 
 - mpd, snapserver and snapclient;
-- this bridge, with no published ports;
-- `cloudflared`;
+- this bridge, published on `127.0.0.1:8787` only;
 - Watchtower, for [automatic updates](#automatic-updates).
 
 Put the secrets in `.env`, next to that file:
 
 ```env
 BRIDGE_API_TOKEN=<openssl rand -hex 32>
-CLOUDFLARE_TUNNEL_TOKEN=<tunnel token>
 BRIDGE_UPDATE_TOKEN=<openssl rand -hex 32>
 WATCHTOWER_TOKEN=<openssl rand -hex 32>
 ```
 
 ### Cloudflare setup
 
-1. **Tunnel.** Go to Zero Trust → Networks → Tunnels and create a tunnel of type
-   *Cloudflared*. Copy its token into `CLOUDFLARE_TUNNEL_TOKEN`. Add a
-   *public hostname*, for example `mpd-bridge.example.com`, with service
-   `http://mpd-bridge:8787`. If you run the bridge outside compose, with the
-   default `LISTEN_ADDR`, use `http://127.0.0.1:8787` instead.
+1. **Tunnel.** `cloudflared` is not part of the compose stack; run it on the Pi
+   however you prefer. In Zero Trust → Networks → Tunnels, add a
+   *public hostname* to the tunnel, for example `mpd-bridge.example.com`, with
+   service `http://127.0.0.1:8787`.
 2. **Service token.** Go to Zero Trust → Access → Service Auth → Service Tokens
    and create one. Keep its Client ID and Secret for the app on the VPS.
 3. **Access application.** Go to Zero Trust → Access → Applications and add a
@@ -198,9 +195,9 @@ CI ──▶ Cloudflare Access ──tunnel──▶ mpd-bridge  POST /admin/upd
                                     watchtower :8080  ──▶ pulls from GHCR, restarts the bridge
 ```
 
-After `docker-build.yml` publishes the bridge image on `main`, the `update-pi`
-job waits until `:latest` resolves to the new digest and calls
-`POST /admin/update`. Watchtower runs
+After `docker-build.yml` publishes the bridge image, the `update-pi` job waits
+until the channel tag (`:latest` on `main`, `:bridge` on the `bridge` branch)
+resolves to the new digest and calls `POST /admin/update`. Watchtower runs
 [`nickfedor/watchtower`](https://github.com/nicholas-fedor/watchtower), the
 maintained fork, since `containrrr/watchtower` was archived in 2025. It is the
 only container with the Docker socket. It has no ports and no tunnel route, so

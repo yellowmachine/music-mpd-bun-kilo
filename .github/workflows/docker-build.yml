@@ -2,7 +2,9 @@ name: Build and push images
 
 on:
   push:
-    branches: [main]
+    # main publishes :latest (the old stack); bridge publishes :bridge for the
+    # VPS + Pi stack while it is being tried out.
+    branches: [main, bridge]
     paths:
       - '.github/workflows/docker-build.yml'
       - 'Dockerfile'
@@ -27,6 +29,9 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  # Moving tag the composes follow; empty on other branches (sha tags only).
+  CHANNEL: ${{ github.ref == 'refs/heads/main' && 'latest' || github.ref == 'refs/heads/bridge' && 'bridge' || '' }}
+  SHA_SUFFIX: ${{ github.ref == 'refs/heads/bridge' && '-bridge' || '' }}
 
 jobs:
   build-and-push:
@@ -52,8 +57,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=sha,prefix=sha-
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,prefix=sha-,suffix=${{ env.SHA_SUFFIX }}
+            type=raw,value=${{ env.CHANNEL }},enable=${{ env.CHANNEL != '' }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -81,7 +86,7 @@ jobs:
       # DOKPLOY_WEBHOOK_URL repository secret (the service's deploy webhook in
       # Dokploy) to enable it; without it this step does nothing.
       - name: Trigger Dokploy deploy
-        if: github.ref == 'refs/heads/main'
+        if: env.CHANNEL != ''
         env:
           DOKPLOY_WEBHOOK_URL: ${{ secrets.DOKPLOY_WEBHOOK_URL }}
         run: |
@@ -127,8 +132,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.name }}
           tags: |
-            type=sha,prefix=sha-
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,prefix=sha-,suffix=${{ env.SHA_SUFFIX }}
+            type=raw,value=${{ env.CHANNEL }},enable=${{ env.CHANNEL != '' }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -201,8 +206,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-mpd-bridge
           tags: |
-            type=sha,prefix=sha-
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,prefix=sha-,suffix=${{ env.SHA_SUFFIX }}
+            type=raw,value=${{ env.CHANNEL }},enable=${{ env.CHANNEL != '' }}
 
       # No QEMU: the Dockerfile cross-compiles on the runner's own platform.
       - name: Set up Docker Buildx
@@ -224,7 +229,7 @@ jobs:
   # new image. Skipped with a notice when the secrets are not set.
   update-pi:
     needs: build-and-push-mpd-bridge
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/bridge'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -258,23 +263,23 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       # Notifying before GHCR propagates the tag would make Watchtower pull the
-      # previous image, so wait until `:latest` resolves to our digest.
-      - name: Wait for GHCR latest tag to reflect pushed digest
+      # previous image, so wait until the channel tag resolves to our digest.
+      - name: Wait for GHCR channel tag to reflect pushed digest
         if: steps.secrets.outputs.enabled == 'true'
         run: |
           image="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-mpd-bridge"
           target="${{ needs.build-and-push-mpd-bridge.outputs.digest }}"
           for i in $(seq 1 30); do
-            current=$(docker buildx imagetools inspect "$image:latest" 2>/dev/null \
+            current=$(docker buildx imagetools inspect "$image:$CHANNEL" 2>/dev/null \
               | awk '/^Digest:/ { print $2; exit }')
             if [ "$current" = "$target" ]; then
               echo "Matched after $i attempt(s): $current"
               exit 0
             fi
-            echo "Attempt $i/30: latest is '$current', want '$target' — retrying in 5s"
+            echo "Attempt $i/30: $CHANNEL is '$current', want '$target' — retrying in 5s"
             sleep 5
           done
-          echo "::error::Timed out waiting for $image:latest to reflect $target"
+          echo "::error::Timed out waiting for $image:$CHANNEL to reflect $target"
           exit 1
 
       # 409 = Watchtower is already updating (e.g. its daily check); retry so

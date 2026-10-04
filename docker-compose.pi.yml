@@ -1,12 +1,13 @@
 # Raspberry Pi stack once the web app runs on the VPS: audio services plus
-# mpd-bridge, reached from the VPS only through the Cloudflare tunnel.
+# mpd-bridge, reached from the VPS only through a Cloudflare tunnel. cloudflared
+# is managed outside this stack; point the tunnel at http://127.0.0.1:8787.
 #
-# Nothing here exposes MPD or Snapserver's control API. The only published
-# port is Snapcast's audio stream (1704) for snapclients on the LAN.
+# Nothing here exposes MPD or Snapserver's control API. The bridge is published
+# on loopback only, and the only port open to the LAN is Snapcast's audio
+# stream (1704) for snapclients.
 #
 # Required in .env next to this file (template in .env.pi.example):
 #   BRIDGE_API_TOKEN=<openssl rand -hex 32>   (same value as the app's MPD_BRIDGE_TOKEN)
-#   CLOUDFLARE_TUNNEL_TOKEN=<from Zero Trust > Networks > Tunnels>
 #   BRIDGE_UPDATE_TOKEN=<openssl rand -hex 32> (a different one; the MPD_BRIDGE_UPDATE_TOKEN GitHub secret)
 #   WATCHTOWER_TOKEN=<openssl rand -hex 32>    (only the bridge and watchtower use it, internally)
 #
@@ -14,7 +15,7 @@
 
 services:
   mpd:
-    image: ghcr.io/yellowmachine/music-mpd-bun-kilo-mpd:latest
+    image: ghcr.io/yellowmachine/music-mpd-bun-kilo-mpd:bridge
     depends_on:
       - snapserver
     volumes:
@@ -35,7 +36,7 @@ services:
       start_period: 10s
 
   snapserver:
-    image: ghcr.io/yellowmachine/music-mpd-bun-kilo-snapserver:latest
+    image: ghcr.io/yellowmachine/music-mpd-bun-kilo-snapserver:bridge
     volumes:
       - ./snapserver.conf:/etc/snapserver.conf
       - shared-fifo:/shared
@@ -46,7 +47,7 @@ services:
       - '1704:1704'
 
   snapclient:
-    image: ghcr.io/yellowmachine/music-mpd-bun-kilo-snapclient:latest
+    image: ghcr.io/yellowmachine/music-mpd-bun-kilo-snapclient:bridge
     command: snapclient -h snapserver --hostID arriba -s Headphones
     depends_on:
       - snapserver
@@ -57,18 +58,19 @@ services:
       - ./asound.conf:/etc/asound.conf:ro
 
   mpd-bridge:
-    image: ghcr.io/yellowmachine/music-mpd-bun-kilo-mpd-bridge:latest
+    image: ghcr.io/yellowmachine/music-mpd-bun-kilo-mpd-bridge:bridge
     environment:
       MPD_HOST: mpd
       SNAP_HOST: snapserver
-      # Listens on the compose network so cloudflared can reach it; it has no
-      # `ports`, so it is not reachable from the host or the LAN.
       LISTEN_ADDR: 0.0.0.0:8787
       API_TOKEN: ${BRIDGE_API_TOKEN:?set BRIDGE_API_TOKEN in .env}
       # POST /admin/update, called by CI after it publishes a new image.
       UPDATE_TOKEN: ${BRIDGE_UPDATE_TOKEN:?set BRIDGE_UPDATE_TOKEN in .env}
       WATCHTOWER_URL: http://watchtower:8080
       WATCHTOWER_TOKEN: ${WATCHTOWER_TOKEN:?set WATCHTOWER_TOKEN in .env}
+    # Loopback only: reachable by cloudflared on the Pi, not from the LAN.
+    ports:
+      - '127.0.0.1:8787:8787'
     labels:
       # Watchtower only updates containers with this label.
       - com.centurylinklabs.watchtower.enable=true
@@ -79,18 +81,6 @@ services:
     read_only: true
     cap_drop: [ALL]
     security_opt: ['no-new-privileges:true']
-
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    # The tunnel's public hostname routes to http://mpd-bridge:8787 (set in
-    # the Cloudflare dashboard) and is protected by a Cloudflare Access
-    # application with a Service Token.
-    command: tunnel --no-autoupdate run
-    environment:
-      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env}
-    depends_on:
-      - mpd-bridge
-    restart: unless-stopped
 
   # Updates the bridge when it asks (the CI webhook) and, in case a webhook is
   # missed, once a day on its own. It is the only container with the Docker

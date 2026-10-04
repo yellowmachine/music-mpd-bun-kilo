@@ -19,7 +19,7 @@
 
 services:
   svelte-mpd:
-    image: ghcr.io/yellowmachine/music-mpd-bun-kilo:latest
+    image: ghcr.io/yellowmachine/music-mpd-bun-kilo:bridge
     # Redeploying pulls the newest image instead of reusing the cached :latest.
     pull_policy: always
     environment:
@@ -53,12 +53,12 @@ services:
     restart: unless-stopped
 
   piper:
-    image: ghcr.io/yellowmachine/music-mpd-bun-kilo-piper:latest
+    image: ghcr.io/yellowmachine/music-mpd-bun-kilo-piper:bridge
     pull_policy: always
     restart: unless-stopped
 
   whisper:
-    image: ghcr.io/yellowmachine/music-mpd-bun-kilo-whisper:latest
+    image: ghcr.io/yellowmachine/music-mpd-bun-kilo-whisper:bridge
     pull_policy: always
     restart: unless-stopped
 
