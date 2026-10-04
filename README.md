@@ -123,7 +123,7 @@ After adding new music files, go to `/admin` and click **Update database** to tr
 | snapserver | 1705 | TCP      | Snapcast control (used by mpd-bridge)     |
 | snapserver | 1780 | HTTP     | Snapserver JSON-RPC API + built-in web UI |
 
-`mpd-bridge` listens on 8787. On the Pi it is published on `127.0.0.1:8788` only (`BRIDGE_PORT` in `.env`), for the externally managed `cloudflared`.
+`mpd-bridge` listens on 8787. On the Pi it is published on port 8788 of the LAN (`BRIDGE_PORT` in `.env`), for `cloudflared` running on another machine.
 
 ---
 
@@ -190,7 +190,7 @@ The app can run on a VPS while MPD, Snapcast and the music stay on the Pi. The t
 browser ──HTTPS──▶ Traefik (Dokploy) ─▶ svelte-mpd (VPS) ──HTTPS──▶ Cloudflare Access ─▶ tunnel ─▶ mpd-bridge (Pi) ─▶ MPD / Snapserver
 ```
 
-1. **On the Pi:** run `docker-compose.pi.yml` (MPD, Snapcast, `mpd-bridge`) and point your own `cloudflared` tunnel at `http://127.0.0.1:8788`. The [bridge README](mpd-bridge/README.md#cloudflare-setup) covers the tunnel, the Access application and its service token.
+1. **On the Pi:** run `docker-compose.pi.yml` (MPD, Snapcast, `mpd-bridge`) and point your own `cloudflared` tunnel at `http://<Pi's LAN IP>:8788`. The [bridge README](mpd-bridge/README.md#cloudflare-setup) covers the tunnel, the Access application and its service token.
 2. **On the VPS (Dokploy):** point a DNS record at the VPS and create a _Compose_ service from `docker-compose.vps.yml`. Set the variables listed at the top of that file under _Environment_ (domain, bridge URL and token, `CF_ACCESS_CLIENT_ID`/`CF_ACCESS_CLIENT_SECRET`, admin password), and under _Domains_ add the domain for service `svelte-mpd`, port `3000`. Dokploy's Traefik handles HTTPS. `DOMAIN` must match that domain, since `ORIGIN` is built from it.
 
 Images are pulled on every deploy (`pull_policy: always`), and app data lives in the `app-data` named volume so it survives redeploys. To deploy automatically, copy the service's deploy webhook URL from Dokploy into a `DOKPLOY_WEBHOOK_URL` repository secret: the CI calls it after publishing a new app image from `main`.
