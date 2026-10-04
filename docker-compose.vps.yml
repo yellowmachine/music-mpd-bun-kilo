@@ -16,6 +16,9 @@
 # above under Environment, and add the domain under Domains pointing at
 # service svelte-mpd, port 3000. Dokploy's Traefik terminates HTTPS, so no
 # port is published here.
+#
+# Piper (TTS) and Whisper (STT) are not run here: they overloaded the VPS.
+# Without them, article audio and the voice assistant are unavailable.
 
 services:
   svelte-mpd:
@@ -34,10 +37,6 @@ services:
       # Signs article audio URLs that MPD on the Pi fetches from this app.
       # Falls back to a key derived from ADMIN_PASSWORD when unset.
       AUDIO_URL_SECRET: ${AUDIO_URL_SECRET:-}
-      PIPER_HOST: piper
-      PIPER_PORT: '5000'
-      WHISPER_HOST: whisper
-      WHISPER_PORT: '5001'
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ASSISTANT_TOKEN: ${ASSISTANT_TOKEN:-}
@@ -47,19 +46,6 @@ services:
       - app-data:/app/data
     expose:
       - '3000'
-    depends_on:
-      - piper
-      - whisper
-    restart: unless-stopped
-
-  piper:
-    image: ghcr.io/yellowmachine/music-mpd-bun-kilo-piper:bridge
-    pull_policy: always
-    restart: unless-stopped
-
-  whisper:
-    image: ghcr.io/yellowmachine/music-mpd-bun-kilo-whisper:bridge
-    pull_policy: always
     restart: unless-stopped
 
 volumes:
